@@ -100,6 +100,8 @@
     private bool levelWon = false;
     private bool gameOver = false;
     private string gameOverReason = "";
+    private bool isAnimating = false;
+    private const int GravityAnimationDelayMs = 200;
 
     private Dictionary<int, LevelConfig> levels = new()
     {
@@ -203,9 +205,9 @@
         bombs = new List<Position>(config.Bombs);
     }
 
-    private void MoveSnake(Direction direction)
+    private async Task MoveSnake(Direction direction)
     {
-        if (snake.Count == 0 || levelWon || gameOver)
+        if (snake.Count == 0 || levelWon || gameOver || isAnimating)
             return;
 
         var head = snake[0];
@@ -294,20 +296,29 @@
             snake.RemoveAt(snake.Count - 1);
         }
 
-        // Apply gravity after the move
-        ApplyGravity();
+        // Apply gravity after the move with animation
+        await ApplyGravityAnimated();
     }
 
-    private void ApplyGravity()
+    private async Task ApplyGravityAnimated()
     {
-        // First, apply gravity to pushable blocks (they fall independently)
-        ApplyGravityToPushableBlocks();
+        isAnimating = true;
 
-        // Then, apply gravity to the snake (as a rigid body)
-        ApplyGravityToSnake();
+        try
+        {
+            // First, apply gravity to pushable blocks (they fall independently)
+            await ApplyGravityToPushableBlocksAnimated();
+
+            // Then, apply gravity to the snake (as a rigid body)
+            await ApplyGravityToSnakeAnimated();
+        }
+        finally
+        {
+            isAnimating = false;
+        }
     }
 
-    private void ApplyGravityToPushableBlocks()
+    private async Task ApplyGravityToPushableBlocksAnimated()
     {
         bool blocksStillFalling = true;
 
@@ -336,10 +347,16 @@
             }
 
             pushableBlocks = newPushableBlocks;
+
+            if (blocksStillFalling)
+            {
+                StateHasChanged();
+                await Task.Delay(GravityAnimationDelayMs);
+            }
         }
     }
 
-    private void ApplyGravityToSnake()
+    private async Task ApplyGravityToSnakeAnimated()
     {
         // Check if snake is supported
         while (!IsSnakeSupported())
@@ -350,6 +367,7 @@
             {
                 gameOver = true;
                 gameOverReason = "You fell off the bottom!";
+                StateHasChanged();
                 return; // Snake hit bottom edge - game over
             }
 
@@ -366,9 +384,14 @@
                 {
                     gameOver = true;
                     gameOverReason = "You hit a bomb while falling!";
+                    StateHasChanged();
                     return;
                 }
             }
+
+            // Render the animation frame
+            StateHasChanged();
+            await Task.Delay(GravityAnimationDelayMs);
         }
     }
 
@@ -385,21 +408,20 @@
                (portalPosition != null && belowPos.Equals(portalPosition));
     }
 
-    private void ChangeDirection(Direction newDirection)
+    private async Task ChangeDirection(Direction newDirection)
     {
-        if (levelWon || gameOver)
+        if (levelWon || gameOver || isAnimating)
             return;
 
-
         // Move the snake immediately in the new direction
-        MoveSnake(newDirection);
+        await MoveSnake(newDirection);
     }
 
 
     [JSInvokable]
-    public void HandleKeyPress(string key)
+    public async Task HandleKeyPress(string key)
     {
-        if (!levelStarted || levelWon || gameOver)
+        if (!levelStarted || levelWon || gameOver || isAnimating)
             return;
 
         var direction = key switch
@@ -413,7 +435,7 @@
 
         if (direction.HasValue)
         {
-            ChangeDirection(direction.Value);
+            await ChangeDirection(direction.Value);
         }
     }
 
