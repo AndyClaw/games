@@ -1,4 +1,5 @@
 @page "/snake"
+@page "/snake/{LevelNumber:int}"
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
@@ -85,6 +86,9 @@
 @code {
     private const int GridSize = 20;
 
+    [Parameter]
+    public int? LevelNumber { get; set; }
+
     private List<Position> snake = new();
     private List<Position> apples = new();
     private Position portalPosition = new(0, 0);
@@ -104,6 +108,35 @@
         { 3, LevelConfig.Parse("D=Cover the bomb&E=17,15&S=17,2;17,1;18,1&G=18,1;18,2;18,3;18,4;18,5;18,6;18,7;18,8;18,9;18,10;18,11;18,12;18,13;18,14;18,15;18,16&P=17,5&B=17,10") },
         { 4, LevelConfig.Parse("D=Collect all apples&E=17,18&S=17,2;17,1;18,1&A=17,6;15,10;17,14&G=18,1;18,2;18,3;18,4;18,5;18,6;18,7;18,8;18,9;18,10;18,11;18,12;18,13;16,9;16,10;16,11&P=17,8") }
     };
+
+    protected override void OnInitialized()
+    {
+        // If a level number is specified in the URL, start that level automatically
+        if (LevelNumber.HasValue && levels.ContainsKey(LevelNumber.Value))
+        {
+            StartLevel(LevelNumber.Value);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Handle level changes when navigating between different level URLs
+        if (LevelNumber.HasValue && levels.ContainsKey(LevelNumber.Value))
+        {
+            // Only restart if we're navigating to a different level
+            if (currentLevel != LevelNumber.Value || !levelStarted)
+            {
+                StartLevel(LevelNumber.Value);
+            }
+        }
+        else if (!LevelNumber.HasValue)
+        {
+            // If no level is specified in URL, return to level select
+            levelStarted = false;
+            levelWon = false;
+            gameOver = false;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

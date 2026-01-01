@@ -15,20 +15,51 @@
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="snake">
+            <div class="nav-link" @onclick="ToggleSnakeSubmenu" @onclick:stopPropagation="true" style="cursor: pointer;">
                 <span class="bi bi-controller" aria-hidden="true"></span> Snake Game
-            </NavLink>
+                <span class="@SnakeSubmenuIcon" style="float: right;"></span>
+            </div>
+            @if (showSnakeSubmenu)
+            {
+                <div class="submenu">
+                    <NavLink class="nav-link submenu-item" href="snake">
+                        All Levels
+                    </NavLink>
+                    <NavLink class="nav-link submenu-item" href="snake/1">
+                        Level 1
+                    </NavLink>
+                    <NavLink class="nav-link submenu-item" href="snake/2">
+                        Level 2
+                    </NavLink>
+                    <NavLink class="nav-link submenu-item" href="snake/3">
+                        Level 3
+                    </NavLink>
+                    <NavLink class="nav-link submenu-item" href="snake/4">
+                        Level 4
+                    </NavLink>
+                    <NavLink class="nav-link submenu-item" href="snake/custom">
+                        Custom
+                    </NavLink>
+                </div>
+            }
         </div>
     </nav>
 </div>
 
 @code {
     private bool collapseNavMenu = true;
+    private bool showSnakeSubmenu = false;
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private string SnakeSubmenuIcon => showSnakeSubmenu ? "bi bi-chevron-up" : "bi bi-chevron-down";
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void ToggleSnakeSubmenu()
+    {
+        showSnakeSubmenu = !showSnakeSubmenu;
     }
 }
