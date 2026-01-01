@@ -1,0 +1,48 @@
+.game-grid {
+    display: grid;
+    grid-template-columns: repeat(20, 25px);
+    grid-template-rows: repeat(20, 25px);
+    gap: 0;
+    background-color: #f0f0f0;
+}
+
+.grid-cell {
+    background-color: #fff;
+}
+
+.snake-head {
+    background-color: #2196F3;
+    border-radius: 3px;
+}
+
+.snake-body {
+    background-color: #4CAF50;
+    border-radius: 2px;
+}
+
+.apple {
+    background-color: #f44336;
+    border-radius: 50%;
+    margin: 3px;
+}
+
+.portal {
+    background: linear-gradient(45deg, #9C27B0, #E91E63);
+    border-radius: 3px;
+}
+
+.ground-block {
+    background-color: #795548;
+}
+
+.pushable-block {
+    background-color: #9E9E9E;
+    margin: 3px;
+}
+
+.bomb {
+    background: radial-gradient(circle at center, #FF6B00 0%, #FF6B00 30%, #1a1a1a 31%, #1a1a1a 100%);
+    border-radius: 50%;
+    margin: 3px;
+}
+
