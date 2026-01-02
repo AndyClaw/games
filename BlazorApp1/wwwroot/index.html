@@ -28,14 +28,40 @@
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
+        // Store the current keyboard handler
+        window.currentSnakeGameHelper = null;
+        window.snakeGameKeyHandler = null;
+        
         window.setupKeyboardHandler = function (dotnetHelper) {
+            // Clean up any existing handler first
+            window.cleanupKeyboardHandler();
+            
+            // Store the new helper
+            window.currentSnakeGameHelper = dotnetHelper;
+            
+            // Create new handler
             window.snakeGameKeyHandler = function (event) {
                 if (event.key.startsWith('Arrow')) {
                     event.preventDefault();
-                    dotnetHelper.invokeMethodAsync('HandleKeyPress', event.key);
+                    if (window.currentSnakeGameHelper) {
+                        window.currentSnakeGameHelper.invokeMethodAsync('HandleKeyPress', event.key);
+                    }
                 }
             };
+            
+            // Add the new handler
             document.addEventListener('keydown', window.snakeGameKeyHandler);
+        };
+        
+        window.cleanupKeyboardHandler = function () {
+            // Remove event listener if it exists
+            if (window.snakeGameKeyHandler) {
+                document.removeEventListener('keydown', window.snakeGameKeyHandler);
+                window.snakeGameKeyHandler = null;
+            }
+            
+            // Clear the helper reference
+            window.currentSnakeGameHelper = null;
         };
     </script>
 </body>

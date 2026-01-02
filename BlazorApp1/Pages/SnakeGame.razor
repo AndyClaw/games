@@ -77,6 +77,7 @@
                 <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Right)">►</button>
             </div>
             <div class="button-row">
+                <button class="game-button" @onclick="() => StartLevel(currentLevel)">Retry</button>
                 <button class="game-button secondary" @onclick="BackToLevelSelect">Back to Level Select</button>
                 <button class="game-button" @onclick="CustomizeCurrentLevel">Customize</button>
             </div>
@@ -246,6 +247,9 @@
     {
         // Unsubscribe from game engine events
         GameEngine.OnStateChanged -= HandleGameEngineStateChanged;
+        
+        // Clean up keyboard handler
+        JSRuntime.InvokeVoidAsync("cleanupKeyboardHandler");
     }
 
     private record LevelConfig(
