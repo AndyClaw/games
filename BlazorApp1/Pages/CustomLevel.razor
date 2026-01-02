@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
+@inject BlazorApp1.Services.SnakeGameEngine GameEngine
 
 <PageTitle>Custom Snake Level</PageTitle>
 
@@ -147,20 +148,20 @@
     else
     {
         <GameGrid 
-            Snake="@snake"
-            Apples="@apples"
-            Portal="@portalPosition"
-            GroundBlocks="@groundBlocks"
-            PushableBlocks="@pushableBlocks"
-            Bombs="@bombs" />
+            Snake="@GameEngine.Snake"
+            Apples="@GameEngine.Apples"
+            Portal="@GameEngine.PortalPosition"
+            GroundBlocks="@GameEngine.GroundBlocks"
+            PushableBlocks="@GameEngine.PushableBlocks"
+            Bombs="@GameEngine.Bombs" />
         <div class="controls">
             <div class="button-row">
-                <button class="arrow-button" @onclick="() => ChangeDirection(Direction.Up)">▲</button>
+                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Up)">▲</button>
             </div>
             <div class="button-row">
-                <button class="arrow-button" @onclick="() => ChangeDirection(Direction.Left)">◄</button>
-                <button class="arrow-button" @onclick="() => ChangeDirection(Direction.Down)">▼</button>
-                <button class="arrow-button" @onclick="() => ChangeDirection(Direction.Right)">►</button>
+                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Left)">◄</button>
+                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Down)">▼</button>
+                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Right)">►</button>
             </div>
             <div class="button-row">
                 <button class="game-button secondary" @onclick="BackToEditor">Back to Editor</button>
@@ -193,24 +194,26 @@
     private ElementReference pushableInputRef;
     private ElementReference bombsInputRef;
 
-    // Game state
-    private List<Position> snake = new();
-    private List<Position> apples = new();
-    private Position portalPosition = new(0, 0);
-    private List<Position> groundBlocks = new();
-    private List<Position> pushableBlocks = new();
-    private List<Position> bombs = new();
+    // Game state - use GameEngine properties
     private bool levelStarted = false;
-    private bool levelWon = false;
-    private bool gameOver = false;
-    private string gameOverReason = "";
+    private bool levelWon => GameEngine.LevelWon;
+    private bool gameOver => GameEngine.GameOver;
+    private string gameOverReason => GameEngine.GameOverReason;
 
     // Store original config for retry
     private LevelConfig? currentConfig = null;
 
     protected override void OnInitialized()
     {
+        // Subscribe to game engine state changes
+        GameEngine.OnStateChanged += HandleGameEngineStateChanged;
+        
         LoadFromUrl();
+    }
+    
+    private void HandleGameEngineStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -290,8 +293,6 @@
             
             InitializeGame(currentConfig);
             levelStarted = true;
-            levelWon = false;
-            gameOver = false;
         }
         catch (Exception ex)
         {
@@ -457,9 +458,6 @@
         {
             InitializeGame(currentConfig);
             levelStarted = true;
-            levelWon = false;
-            gameOver = false;
-            gameOverReason = "";
         }
     }
 
@@ -533,9 +531,6 @@
     private void BackToEditor()
     {
         levelStarted = false;
-        levelWon = false;
-        gameOver = false;
-        gameOverReason = "";
         showShareUrl = false;
     }
 
@@ -545,14 +540,16 @@
     }
 
     // Preview helper methods - parse without throwing exceptions
-    private List<Position> GetPreviewSnake()
+    
+    // Reusable helper to convert semicolon-delimited position strings to List<Position>
+    private List<Position> ParsePositionListSafe(string input)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(snakeInput))
+            if (string.IsNullOrWhiteSpace(input))
                 return new List<Position>();
             
-            return snakeInput.Split(';')
+            return input.Split(';')
                 .Select(p => p.Trim())
                 .Where(p => !string.IsNullOrWhiteSpace(p))
                 .Select(p => TryParsePosition(p))
@@ -565,25 +562,9 @@
         }
     }
 
-    private List<Position> GetPreviewApples()
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(applesInput))
-                return new List<Position>();
-            
-            return applesInput.Split(';')
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p => TryParsePosition(p))
-                .OfType<Position>()
-                .ToList();
-        }
-        catch
-        {
-            return new List<Position>();
-        }
-    }
+    private List<Position> GetPreviewSnake() => ParsePositionListSafe(snakeInput);
+
+    private List<Position> GetPreviewApples() => ParsePositionListSafe(applesInput);
 
     private Position? GetPreviewPortal()
     {
@@ -600,65 +581,11 @@
         }
     }
 
-    private List<Position> GetPreviewGroundBlocks()
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(groundInput))
-                return new List<Position>();
-            
-            return groundInput.Split(';')
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p => TryParsePosition(p))
-                .OfType<Position>()
-                .ToList();
-        }
-        catch
-        {
-            return new List<Position>();
-        }
-    }
+    private List<Position> GetPreviewGroundBlocks() => ParsePositionListSafe(groundInput);
 
-    private List<Position> GetPreviewPushableBlocks()
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(pushableInput))
-                return new List<Position>();
-            
-            return pushableInput.Split(';')
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p => TryParsePosition(p))
-                .OfType<Position>()
-                .ToList();
-        }
-        catch
-        {
-            return new List<Position>();
-        }
-    }
+    private List<Position> GetPreviewPushableBlocks() => ParsePositionListSafe(pushableInput);
 
-    private List<Position> GetPreviewBombs()
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(bombsInput))
-                return new List<Position>();
-            
-            return bombsInput.Split(';')
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p => TryParsePosition(p))
-                .OfType<Position>()
-                .ToList();
-        }
-        catch
-        {
-            return new List<Position>();
-        }
-    }
+    private List<Position> GetPreviewBombs() => ParsePositionListSafe(bombsInput);
 
     private Position? TryParsePosition(string posStr)
     {
@@ -748,9 +675,8 @@
         if (string.IsNullOrWhiteSpace(field))
             return;
 
-        var positions = field.Split(';')
-            .Select(p => p.Trim())
-            .Where(p => !string.IsNullOrWhiteSpace(p) && p != posStr)
+        var positions = field.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(p => p != posStr)
             .ToList();
 
         field = string.Join(";", positions);
@@ -783,212 +709,46 @@
 
     private void AppendPosition(ref string field, string posStr)
     {
-        if (string.IsNullOrWhiteSpace(field))
+        if (!field.Contains(posStr))
         {
-            field = posStr;
-        }
-        else
-        {
-            // Check if position already exists
-            var existing = field.Split(';')
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .ToList();
-
-            if (!existing.Contains(posStr))
-            {
-                field = field.TrimEnd(';') + ";" + posStr;
-            }
+            field = field.TrimEnd(';') + ";" + posStr;
         }
     }
 
     private void InitializeGame(LevelConfig config)
     {
-        snake = new List<Position>(config.SnakeSegments);
-        apples = new List<Position>(config.Apples);
-        portalPosition = config.Portal;
-        groundBlocks = new List<Position>(config.GroundBlocks);
-        pushableBlocks = new List<Position>(config.PushableBlocks);
-        bombs = new List<Position>(config.Bombs);
+        GameEngine.InitializeGame(
+            config.SnakeSegments,
+            config.Apples,
+            config.Portal,
+            config.GroundBlocks,
+            config.PushableBlocks,
+            config.Bombs
+        );
     }
 
-    private void MoveSnake(Direction direction)
+    private void ChangeDirection(Services.Direction newDirection)
     {
-        if (snake.Count == 0 || levelWon || gameOver)
+        if (levelWon || gameOver || GameEngine.IsAnimating)
             return;
 
-        var head = snake[0];
-        Position newHead = direction switch
-        {
-            Direction.Up => head.Up(),
-            Direction.Down => head.Down(),
-            Direction.Left => head.Left(),
-            Direction.Right => head.Right(),
-            _ => head
-        };
-
-        if (newHead.Equals(portalPosition))
-        {
-            levelWon = true;
-            return;
-        }
-
-        if (newHead.Row < 0 || newHead.Row >= GridSize || newHead.Col < 0 || newHead.Col >= GridSize)
-            return;
-
-        if (snake.Contains(newHead))
-            return;
-
-        if (groundBlocks.Contains(newHead))
-            return;
-
-        if (pushableBlocks.Contains(newHead))
-        {
-            Position blockDestination = direction switch
-            {
-                Direction.Up => newHead.Up(),
-                Direction.Down => newHead.Down(),
-                Direction.Left => newHead.Left(),
-                Direction.Right => newHead.Right(),
-                _ => newHead
-            };
-
-            if (blockDestination.Row < 0 || blockDestination.Row >= GridSize ||
-                blockDestination.Col < 0 || blockDestination.Col >= GridSize)
-                return;
-
-            if (groundBlocks.Contains(blockDestination) ||
-                pushableBlocks.Contains(blockDestination) ||
-                snake.Any(s => s.Equals(blockDestination)) ||
-                apples.Contains(blockDestination))
-                return;
-
-            pushableBlocks.Remove(newHead);
-            pushableBlocks.Add(blockDestination);
-        }
-
-        if (bombs.Contains(newHead) && !pushableBlocks.Contains(newHead))
-        {
-            gameOver = true;
-            gameOverReason = "You hit a bomb!";
-            return;
-        }
-
-        snake.Insert(0, newHead);
-
-        bool ateApple = false;
-        if (apples.Contains(newHead))
-        {
-            apples.Remove(newHead);
-            ateApple = true;
-        }
-
-        if (!ateApple)
-        {
-            snake.RemoveAt(snake.Count - 1);
-        }
-
-        ApplyGravity();
-    }
-
-    private void ApplyGravity()
-    {
-        ApplyGravityToPushableBlocks();
-        ApplyGravityToSnake();
-    }
-
-    private void ApplyGravityToPushableBlocks()
-    {
-        bool blocksStillFalling = true;
-
-        while (blocksStillFalling)
-        {
-            blocksStillFalling = false;
-            List<Position> newPushableBlocks = new List<Position>(pushableBlocks);
-
-            foreach (var block in pushableBlocks.OrderByDescending(b => b.Row))
-            {
-                var belowPos = block.Down();
-
-                if (belowPos.Row < GridSize &&
-                    !groundBlocks.Contains(belowPos) &&
-                    !newPushableBlocks.Contains(belowPos) &&
-                    !snake.Any(s => s.Equals(belowPos)) &&
-                    !apples.Contains(belowPos))
-                {
-                    newPushableBlocks.Remove(block);
-                    newPushableBlocks.Add(belowPos);
-                    blocksStillFalling = true;
-                }
-            }
-
-            pushableBlocks = newPushableBlocks;
-        }
-    }
-
-    private void ApplyGravityToSnake()
-    {
-        while (!IsSnakeSupported())
-        {
-            int maxRow = snake.Max(s => s.Row);
-            if (maxRow >= GridSize - 1)
-            {
-                gameOver = true;
-                gameOverReason = "You fell off the bottom!";
-                return;
-            }
-
-            for (int i = 0; i < snake.Count; i++)
-            {
-                snake[i] = snake[i].Down();
-            }
-
-            foreach (var segment in snake)
-            {
-                if (bombs.Contains(segment) && !pushableBlocks.Contains(segment))
-                {
-                    gameOver = true;
-                    gameOverReason = "You hit a bomb while falling!";
-                    return;
-                }
-            }
-        }
-    }
-
-    private bool IsSnakeSupported()
-    {
-        return snake.Any(segment => PositionProvidesSupport(segment.Down()));
-    }
-
-    private bool PositionProvidesSupport(Position belowPos)
-    {
-        return groundBlocks.Contains(belowPos) || 
-               pushableBlocks.Contains(belowPos) || 
-               apples.Contains(belowPos) ||
-               belowPos.Equals(portalPosition);
-    }
-
-    private void ChangeDirection(Direction newDirection)
-    {
-        if (levelWon || gameOver)
-            return;
-
-        MoveSnake(newDirection);
+        // Use synchronous version without animation for custom level editor
+        GameEngine.MoveSnake(newDirection);
     }
 
     [JSInvokable]
     public void HandleKeyPress(string key)
     {
-        if (!levelStarted || levelWon || gameOver)
+        if (!levelStarted || levelWon || gameOver || GameEngine.IsAnimating)
             return;
 
         var direction = key switch
         {
-            "ArrowUp" => Direction.Up,
-            "ArrowDown" => Direction.Down,
-            "ArrowLeft" => Direction.Left,
-            "ArrowRight" => Direction.Right,
-            _ => (Direction?)null
+            "ArrowUp" => Services.Direction.Up,
+            "ArrowDown" => Services.Direction.Down,
+            "ArrowLeft" => Services.Direction.Left,
+            "ArrowRight" => Services.Direction.Right,
+            _ => (Services.Direction?)null
         };
 
         if (direction.HasValue)
@@ -997,12 +757,12 @@
         }
     }
 
-
     public void Dispose()
     {
+        // Unsubscribe from game engine events
+        GameEngine.OnStateChanged -= HandleGameEngineStateChanged;
     }
-
-
+    
     private record LevelConfig(
         string Description,
         List<Position> SnakeSegments,
@@ -1089,13 +849,5 @@
                 .ToList();
         }
     };
-
-    private enum Direction
-    {
-        Up,
-        Down,
-        Left,
-        Right
-    }
 }
 

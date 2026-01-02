@@ -3,6 +3,7 @@
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
+@inject BlazorApp1.Services.SnakeGameEngine GameEngine
 
 <PageTitle>Snake Game</PageTitle>
 
@@ -60,20 +61,20 @@
     else
     {
         <GameGrid 
-            Snake="@snake"
-            Apples="@apples"
-            Portal="@portalPosition"
-            GroundBlocks="@groundBlocks"
-            PushableBlocks="@pushableBlocks"
-            Bombs="@bombs" />
+            Snake="@GameEngine.Snake"
+            Apples="@GameEngine.Apples"
+            Portal="@GameEngine.PortalPosition"
+            GroundBlocks="@GameEngine.GroundBlocks"
+            PushableBlocks="@GameEngine.PushableBlocks"
+            Bombs="@GameEngine.Bombs" />
         <div class="controls">
             <div class="button-row">
-                <button class="arrow-button" @onclick="() => ChangeDirection(Direction.Up)">▲</button>
+                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Up)">▲</button>
             </div>
             <div class="button-row">
-                <button class="arrow-button" @onclick="() => ChangeDirection(Direction.Left)">◄</button>
-                <button class="arrow-button" @onclick="() => ChangeDirection(Direction.Down)">▼</button>
-                <button class="arrow-button" @onclick="() => ChangeDirection(Direction.Right)">►</button>
+                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Left)">◄</button>
+                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Down)">▼</button>
+                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Right)">►</button>
             </div>
             <div class="button-row">
                 <button class="game-button secondary" @onclick="BackToLevelSelect">Back to Level Select</button>
@@ -89,19 +90,13 @@
     [Parameter]
     public int? LevelNumber { get; set; }
 
-    private List<Position> snake = new();
-    private List<Position> apples = new();
-    private Position portalPosition = new(0, 0);
-    private List<Position> groundBlocks = new();
-    private List<Position> pushableBlocks = new();
-    private List<Position> bombs = new();
     private int currentLevel = 1;
     private bool levelStarted = false;
-    private bool levelWon = false;
-    private bool gameOver = false;
-    private string gameOverReason = "";
-    private bool isAnimating = false;
-    private const int GravityAnimationDelayMs = 200;
+    
+    // Use GameEngine properties instead of local state
+    private bool levelWon => GameEngine.LevelWon;
+    private bool gameOver => GameEngine.GameOver;
+    private string gameOverReason => GameEngine.GameOverReason;
 
     private Dictionary<int, LevelConfig> levels = new()
     {
@@ -121,11 +116,19 @@
 
     protected override void OnInitialized()
     {
+        // Subscribe to game engine state changes
+        GameEngine.OnStateChanged += HandleGameEngineStateChanged;
+        
         // If a level number is specified in the URL, start that level automatically
         if (LevelNumber.HasValue && levels.ContainsKey(LevelNumber.Value))
         {
             StartLevel(LevelNumber.Value);
         }
+    }
+    
+    private void HandleGameEngineStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     protected override void OnParametersSet()
@@ -143,8 +146,6 @@
         {
             // If no level is specified in URL, return to level select
             levelStarted = false;
-            levelWon = false;
-            gameOver = false;
         }
     }
 
@@ -163,9 +164,6 @@
 
         currentLevel = level;
         levelStarted = true;
-        levelWon = false;
-        gameOver = false;
-        gameOverReason = "";
 
         var config = levels[level];
         InitializeGame(config);
@@ -174,9 +172,6 @@
     private void BackToLevelSelect()
     {
         levelStarted = false;
-        levelWon = false;
-        gameOver = false;
-        gameOverReason = "";
     }
 
     private void GoToCustomLevel()
@@ -189,12 +184,12 @@
         // Build the current level config
         var config = new LevelConfig(
             $"Level {currentLevel}",
-            snake.ToList(),
-            apples.ToList(),
-            portalPosition,
-            groundBlocks.ToList(),
-            pushableBlocks.ToList(),
-            bombs.ToList()
+            GameEngine.Snake.ToList(),
+            GameEngine.Apples.ToList(),
+            GameEngine.PortalPosition,
+            GameEngine.GroundBlocks.ToList(),
+            GameEngine.PushableBlocks.ToList(),
+            GameEngine.Bombs.ToList()
         );
 
         // Navigate to custom level with current state as URL parameters
@@ -204,241 +199,39 @@
 
     private void InitializeGame(LevelConfig config)
     {
-        snake = new List<Position>(config.SnakeSegments);
-
-        apples = new List<Position>(config.Apples);
-        portalPosition = config.Portal;
-        groundBlocks = new List<Position>(config.GroundBlocks);
-        pushableBlocks = new List<Position>(config.PushableBlocks);
-        bombs = new List<Position>(config.Bombs);
+        GameEngine.InitializeGame(
+            config.SnakeSegments,
+            config.Apples,
+            config.Portal,
+            config.GroundBlocks,
+            config.PushableBlocks,
+            config.Bombs
+        );
     }
 
-    private async Task MoveSnake(Direction direction)
+    private async Task ChangeDirection(Services.Direction newDirection)
     {
-        if (snake.Count == 0 || levelWon || gameOver || isAnimating)
+        if (levelWon || gameOver || GameEngine.IsAnimating)
             return;
 
-        var head = snake[0];
-        Position newHead = direction switch
-        {
-            Direction.Up => head.Up(),
-            Direction.Down => head.Down(),
-            Direction.Left => head.Left(),
-            Direction.Right => head.Right(),
-            _ => head
-        };
-
-        // Check if portal was reached
-        if (newHead.Equals(portalPosition))
-        {
-            levelWon = true;
-            return;
-        }
-
-        // Check if out of bounds
-        if (newHead.Row < 0 || newHead.Row >= GridSize || newHead.Col < 0 || newHead.Col >= GridSize)
-            return; // Can't move out of bounds
-
-        // Check if hitting itself
-        if (snake.Contains(newHead))
-            return; // Can't move onto own body
-
-        // Check if hitting ground block (immovable)
-        if (groundBlocks.Contains(newHead))
-            return; // Can't move onto ground block
-
-        // Check if hitting an apple - can move onto it to eat it (apple acts as solid block otherwise)
-        // This check is handled later after movement validation
-
-        // Check if hitting a pushable block
-        if (pushableBlocks.Contains(newHead))
-        {
-            // Try to push the block
-            Position blockDestination = direction switch
-            {
-                Direction.Up => newHead.Up(),
-                Direction.Down => newHead.Down(),
-                Direction.Left => newHead.Left(),
-                Direction.Right => newHead.Right(),
-                _ => newHead
-            };
-
-            // Check if block can be pushed (destination must be valid and empty)
-            if (blockDestination.Row < 0 || blockDestination.Row >= GridSize ||
-                blockDestination.Col < 0 || blockDestination.Col >= GridSize)
-                return; // Can't push block out of bounds
-
-            if (groundBlocks.Contains(blockDestination) ||
-                pushableBlocks.Contains(blockDestination) ||
-                snake.Any(s => s.Equals(blockDestination)) ||
-                apples.Contains(blockDestination))
-                return; // Can't push block onto another obstacle, snake, or apple
-
-            // Push the block (bombs can be under the block, that's ok)
-            pushableBlocks.Remove(newHead);
-            pushableBlocks.Add(blockDestination);
-        }
-
-        // Check if hitting a bomb (that's not covered by a pushable block)
-        if (bombs.Contains(newHead) && !pushableBlocks.Contains(newHead))
-        {
-            gameOver = true;
-            gameOverReason = "You hit a bomb!";
-            return; // Game over!
-        }
-
-        // Insert new head at the beginning
-        snake.Insert(0, newHead);
-
-        // Check if apple was collected
-        bool ateApple = false;
-        if (apples.Contains(newHead))
-        {
-            apples.Remove(newHead); // Remove the collected apple
-            ateApple = true; // Snake will grow
-        }
-
-        // Remove the tail (unless we ate an apple)
-        if (!ateApple)
-        {
-            snake.RemoveAt(snake.Count - 1);
-        }
-
-        // Apply gravity after the move with animation
-        await ApplyGravityAnimated();
-    }
-
-    private async Task ApplyGravityAnimated()
-    {
-        isAnimating = true;
-
-        try
-        {
-            // First, apply gravity to pushable blocks (they fall independently)
-            await ApplyGravityToPushableBlocksAnimated();
-
-            // Then, apply gravity to the snake (as a rigid body)
-            await ApplyGravityToSnakeAnimated();
-        }
-        finally
-        {
-            isAnimating = false;
-        }
-    }
-
-    private async Task ApplyGravityToPushableBlocksAnimated()
-    {
-        bool blocksStillFalling = true;
-
-        while (blocksStillFalling)
-        {
-            blocksStillFalling = false;
-            List<Position> newPushableBlocks = new List<Position>(pushableBlocks);
-
-            foreach (var block in pushableBlocks.OrderByDescending(b => b.Row))
-            {
-                var belowPos = block.Down();
-
-                // Check if block can fall
-                if (belowPos.Row < GridSize && // Not at bottom
-                    !groundBlocks.Contains(belowPos) && // No ground block below
-                    !newPushableBlocks.Contains(belowPos) && // No other pushable block below
-                    !snake.Any(s => s.Equals(belowPos)) && // No snake segment below
-                    !apples.Contains(belowPos) && // No apple below
-                    !(portalPosition != null && belowPos.Equals(portalPosition))) // No portal below
-                {
-                    // Block falls
-                    newPushableBlocks.Remove(block);
-                    newPushableBlocks.Add(belowPos);
-                    blocksStillFalling = true;
-                }
-            }
-
-            pushableBlocks = newPushableBlocks;
-
-            if (blocksStillFalling)
-            {
-                StateHasChanged();
-                await Task.Delay(GravityAnimationDelayMs);
-            }
-        }
-    }
-
-    private async Task ApplyGravityToSnakeAnimated()
-    {
-        // Check if snake is supported
-        while (!IsSnakeSupported())
-        {
-            // Check if snake would hit bottom edge
-            int maxRow = snake.Max(s => s.Row);
-            if (maxRow >= GridSize - 1)
-            {
-                gameOver = true;
-                gameOverReason = "You fell off the bottom!";
-                StateHasChanged();
-                return; // Snake hit bottom edge - game over
-            }
-
-            // Move entire snake down by 1 as a rigid body
-            for (int i = 0; i < snake.Count; i++)
-            {
-                snake[i] = snake[i].Down();
-            }
-
-            // Check if snake hit a bomb while falling
-            foreach (var segment in snake)
-            {
-                if (bombs.Contains(segment) && !pushableBlocks.Contains(segment))
-                {
-                    gameOver = true;
-                    gameOverReason = "You hit a bomb while falling!";
-                    StateHasChanged();
-                    return;
-                }
-            }
-
-            // Render the animation frame
-            StateHasChanged();
-            await Task.Delay(GravityAnimationDelayMs);
-        }
-    }
-
-    private bool IsSnakeSupported()
-    {
-        return snake.Any(segment => PositionProvidesSupport(segment.Down()));
-    }
-
-    private bool PositionProvidesSupport(Position belowPos)
-    {
-        return groundBlocks.Contains(belowPos) || 
-               pushableBlocks.Contains(belowPos) || 
-               apples.Contains(belowPos) ||
-               (portalPosition != null && belowPos.Equals(portalPosition));
-    }
-
-    private async Task ChangeDirection(Direction newDirection)
-    {
-        if (levelWon || gameOver || isAnimating)
-            return;
-
-        // Move the snake immediately in the new direction
-        await MoveSnake(newDirection);
+        // Move the snake using game engine
+        await GameEngine.MoveSnakeWithAnimatedGravity(newDirection);
     }
 
 
     [JSInvokable]
     public async Task HandleKeyPress(string key)
     {
-        if (!levelStarted || levelWon || gameOver || isAnimating)
+        if (!levelStarted || levelWon || gameOver || GameEngine.IsAnimating)
             return;
 
         var direction = key switch
         {
-            "ArrowUp" => Direction.Up,
-            "ArrowDown" => Direction.Down,
-            "ArrowLeft" => Direction.Left,
-            "ArrowRight" => Direction.Right,
-            _ => (Direction?)null
+            "ArrowUp" => Services.Direction.Up,
+            "ArrowDown" => Services.Direction.Down,
+            "ArrowLeft" => Services.Direction.Left,
+            "ArrowRight" => Services.Direction.Right,
+            _ => (Services.Direction?)null
         };
 
         if (direction.HasValue)
@@ -451,9 +244,9 @@
 
     public void Dispose()
     {
-        // No resources to dispose
+        // Unsubscribe from game engine events
+        GameEngine.OnStateChanged -= HandleGameEngineStateChanged;
     }
-
 
     private record LevelConfig(
         string Description,
@@ -566,13 +359,5 @@
             return string.Join("&", parts);
         }
     };
-
-    private enum Direction
-    {
-        Up,
-        Down,
-        Left,
-        Right
-    }
 }
 
