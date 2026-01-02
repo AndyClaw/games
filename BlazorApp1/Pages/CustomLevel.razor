@@ -21,32 +21,56 @@
 
                 <div class="form-group">
                     <label>End Portal (row,col):</label>
-                    <input type="text" @bind="portalInput" @bind:event="oninput" placeholder="17,14" class="form-control" />
+                    <input @ref="portalInputRef" type="text" @bind="portalInput" @bind:event="onchange"
+                           @oninput="@((ChangeEventArgs e) => portalInput = e.Value?.ToString() ?? "")"
+                           @onfocus="@(() => focusedField = "portal")"
+                           @onblur="@(() => focusedField = "")"
+                           placeholder="17,14" class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <label>Snake Segments (row,col;row,col;... head first):</label>
-                    <input type="text" @bind="snakeInput" @bind:event="oninput" placeholder="17,3;17,2;17,1" class="form-control" />
+                    <input @ref="snakeInputRef" type="text" @bind="snakeInput" @bind:event="onchange"
+                           @oninput="@((ChangeEventArgs e) => snakeInput = e.Value?.ToString() ?? "")"
+                           @onfocus="@(() => focusedField = "snake")"
+                           @onblur="@(() => focusedField = "")"
+                           placeholder="17,3;17,2;17,1" class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <label>Apples (row,col;row,col;... optional):</label>
-                    <input type="text" @bind="applesInput" @bind:event="oninput" placeholder="15,10;17,14" class="form-control" />
+                    <input @ref="applesInputRef" type="text" @bind="applesInput" @bind:event="onchange"
+                           @oninput="@((ChangeEventArgs e) => applesInput = e.Value?.ToString() ?? "")"
+                           @onfocus="@(() => focusedField = "apples")"
+                           @onblur="@(() => focusedField = "")"
+                           placeholder="15,10;17,14" class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <label>Ground Blocks (row,col;row,col;...):</label>
-                    <textarea @bind="groundInput" @bind:event="oninput" placeholder="18,2;18,3;18,4" class="form-control" rows="3"></textarea>
+                    <textarea @ref="groundInputRef" @bind="groundInput" @bind:event="onchange"
+                              @oninput="@((ChangeEventArgs e) => groundInput = e.Value?.ToString() ?? "")"
+                              @onfocus="@(() => focusedField = "ground")"
+                              @onblur="@(() => focusedField = "")"
+                              placeholder="18,2;18,3;18,4" class="form-control" rows="3"></textarea>
                 </div>
 
                 <div class="form-group">
                     <label>Pushable Blocks (row,col;row,col;... optional):</label>
-                    <input type="text" @bind="pushableInput" @bind:event="oninput" placeholder="17,5" class="form-control" />
+                    <input @ref="pushableInputRef" type="text" @bind="pushableInput" @bind:event="onchange"
+                           @oninput="@((ChangeEventArgs e) => pushableInput = e.Value?.ToString() ?? "")"
+                           @onfocus="@(() => focusedField = "pushable")"
+                           @onblur="@(() => focusedField = "")"
+                           placeholder="17,5" class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <label>Bombs (row,col;row,col;... optional):</label>
-                    <input type="text" @bind="bombsInput" @bind:event="oninput" placeholder="17,10" class="form-control" />
+                    <input @ref="bombsInputRef" type="text" @bind="bombsInput" @bind:event="onchange"
+                           @oninput="@((ChangeEventArgs e) => bombsInput = e.Value?.ToString() ?? "")"
+                           @onfocus="@(() => focusedField = "bombs")"
+                           @onblur="@(() => focusedField = "")"
+                           placeholder="17,10" class="form-control" />
                 </div>
 
             <div class="button-group">
@@ -77,14 +101,24 @@
         
         <div class="level-preview">
             <h3>Preview</h3>
-            <GameGrid 
+            <InteractiveGameGrid 
                 Snake="@GetPreviewSnake()"
                 Apples="@GetPreviewApples()"
                 Portal="@GetPreviewPortal()"
                 GroundBlocks="@GetPreviewGroundBlocks()"
                 PushableBlocks="@GetPreviewPushableBlocks()"
-                Bombs="@GetPreviewBombs()" />
-            <p class="preview-hint">Live preview of your level (invalid positions are ignored)</p>
+                Bombs="@GetPreviewBombs()"
+                OnCellClicked="@HandleCellClick" />
+            <p class="preview-hint">Live preview of your level (invalid positions are ignored)<br/>
+               @if (!string.IsNullOrEmpty(focusedField))
+               {
+                   <span>Click empty cells to add @focusedField positions, or click filled cells to remove them.</span>
+               }
+               else
+               {
+                   <span>Focus a position text box to add positions by clicking.</span>
+               }
+            </p>
         </div>
     </div>
     }
@@ -149,6 +183,15 @@
     private string errorMessage = "";
     private bool showShareUrl = false;
     private string shareUrl = "";
+    private string focusedField = "";
+
+    // Element references for focus management
+    private ElementReference portalInputRef;
+    private ElementReference snakeInputRef;
+    private ElementReference applesInputRef;
+    private ElementReference groundInputRef;
+    private ElementReference pushableInputRef;
+    private ElementReference bombsInputRef;
 
     // Game state
     private List<Position> snake = new();
@@ -639,6 +682,123 @@
         catch
         {
             return null;
+        }
+    }
+
+    private async Task HandleCellClick((int row, int col, string cellType) clickInfo)
+    {
+        var posStr = $"{clickInfo.row},{clickInfo.col}";
+        
+        // If cell is not empty, remove it from the appropriate field and set focus to that field
+        if (!string.IsNullOrEmpty(clickInfo.cellType))
+        {
+            await RemovePositionFromFieldAndFocus(posStr, clickInfo.cellType);
+            StateHasChanged();
+        }
+        // If cell is empty and a field has focus, add position to that field
+        else if (!string.IsNullOrEmpty(focusedField))
+        {
+            AddPositionToField(posStr, focusedField);
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemovePositionFromFieldAndFocus(string posStr, string cellType)
+    {
+        // Determine which field to remove from based on cell type
+        switch (cellType)
+        {
+            case "snake-head":
+            case "snake-body":
+                RemovePosition(ref snakeInput, posStr);
+                focusedField = "snake";
+                await JSRuntime.InvokeVoidAsync("eval", $"document.querySelector('input[placeholder=\"17,3;17,2;17,1\"]').focus()");
+                await snakeInputRef.FocusAsync();
+                break;
+            case "apple":
+                RemovePosition(ref applesInput, posStr);
+                focusedField = "apples";
+                await applesInputRef.FocusAsync();
+                break;
+            case "portal":
+                portalInput = "";
+                focusedField = "portal";
+                await portalInputRef.FocusAsync();
+                break;
+            case "ground-block":
+                RemovePosition(ref groundInput, posStr);
+                focusedField = "ground";
+                await groundInputRef.FocusAsync();
+                break;
+            case "pushable-block":
+                RemovePosition(ref pushableInput, posStr);
+                focusedField = "pushable";
+                await pushableInputRef.FocusAsync();
+                break;
+            case "bomb":
+                RemovePosition(ref bombsInput, posStr);
+                focusedField = "bombs";
+                await bombsInputRef.FocusAsync();
+                break;
+        }
+    }
+
+    private void RemovePosition(ref string field, string posStr)
+    {
+        if (string.IsNullOrWhiteSpace(field))
+            return;
+
+        var positions = field.Split(';')
+            .Select(p => p.Trim())
+            .Where(p => !string.IsNullOrWhiteSpace(p) && p != posStr)
+            .ToList();
+
+        field = string.Join(";", positions);
+    }
+
+    private void AddPositionToField(string posStr, string fieldName)
+    {
+        switch (fieldName)
+        {
+            case "portal":
+                portalInput = posStr;
+                break;
+            case "snake":
+                AppendPosition(ref snakeInput, posStr);
+                break;
+            case "apples":
+                AppendPosition(ref applesInput, posStr);
+                break;
+            case "ground":
+                AppendPosition(ref groundInput, posStr);
+                break;
+            case "pushable":
+                AppendPosition(ref pushableInput, posStr);
+                break;
+            case "bombs":
+                AppendPosition(ref bombsInput, posStr);
+                break;
+        }
+    }
+
+    private void AppendPosition(ref string field, string posStr)
+    {
+        if (string.IsNullOrWhiteSpace(field))
+        {
+            field = posStr;
+        }
+        else
+        {
+            // Check if position already exists
+            var existing = field.Split(';')
+                .Select(p => p.Trim())
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .ToList();
+
+            if (!existing.Contains(posStr))
+            {
+                field = field.TrimEnd(';') + ";" + posStr;
+            }
         }
     }
 

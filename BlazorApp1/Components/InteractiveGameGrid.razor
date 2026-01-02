@@ -1,0 +1,121 @@
+@* Interactive game grid component for level editor *@
+
+<div class="game-grid">
+    @for (int row = 0; row < GridSize; row++)
+    {
+        @for (int col = 0; col < GridSize; col++)
+        {
+            var currentRow = row;
+            var currentCol = col;
+            var cellType = GetCellType(currentRow, currentCol);
+            var cellInfo = GetCellInfo(currentRow, currentCol);
+            <div class="grid-cell @cellType" 
+                 title="@cellInfo"
+                 @onmousedown="@(async (MouseEventArgs e) => await OnCellClick(currentRow, currentCol))"
+                 @onmousedown:preventDefault="true"></div>
+        }
+    }
+</div>
+
+@code {
+    private const int GridSize = 20;
+
+    [Parameter]
+    public List<Position> Snake { get; set; } = new();
+
+    [Parameter]
+    public List<Position> Apples { get; set; } = new();
+
+    [Parameter]
+    public Position? Portal { get; set; }
+
+    [Parameter]
+    public List<Position> GroundBlocks { get; set; } = new();
+
+    [Parameter]
+    public List<Position> PushableBlocks { get; set; } = new();
+
+    [Parameter]
+    public List<Position> Bombs { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<(int row, int col, string cellType)> OnCellClicked { get; set; }
+
+    private string GetCellType(int row, int col)
+    {
+        var pos = new Position(row, col);
+
+        // Check if snake (highest priority for rendering)
+        for (int i = 0; i < Snake.Count; i++)
+        {
+            if (Snake[i].Equals(pos))
+            {
+                return i == 0 ? "snake-head" : "snake-body";
+            }
+        }
+
+        // Check if pushable block (can cover bombs)
+        if (PushableBlocks.Contains(pos))
+            return "pushable-block";
+
+        // Check if portal
+        if (Portal != null && pos.Equals(Portal))
+            return "portal";
+
+        // Check if apple
+        if (Apples.Contains(pos))
+            return "apple";
+
+        // Check if ground block
+        if (GroundBlocks.Contains(pos))
+            return "ground-block";
+
+        // Check if bomb
+        if (Bombs.Contains(pos))
+            return "bomb";
+
+        return "";
+    }
+
+    private string GetCellInfo(int row, int col)
+    {
+        var pos = new Position(row, col);
+        var cellType = GetCellType(row, col);
+
+        if (string.IsNullOrEmpty(cellType))
+            return $"{row},{col} - Empty";
+
+        // Check what type it is
+        for (int i = 0; i < Snake.Count; i++)
+        {
+            if (Snake[i].Equals(pos))
+            {
+                return i == 0 ? $"{row},{col} - Snake Head" : $"{row},{col} - Snake Body";
+            }
+        }
+
+        if (PushableBlocks.Contains(pos))
+            return $"{row},{col} - Pushable Block";
+
+        if (Portal != null && pos.Equals(Portal))
+            return $"{row},{col} - End Portal";
+
+        if (Apples.Contains(pos))
+            return $"{row},{col} - Apple";
+
+        if (GroundBlocks.Contains(pos))
+            return $"{row},{col} - Ground";
+
+        if (Bombs.Contains(pos))
+            return $"{row},{col} - Bomb";
+
+        return $"{row},{col} - Empty";
+    }
+
+    private async Task OnCellClick(int row, int col)
+    {
+        var cellType = GetCellType(row, col);
+        await OnCellClicked.InvokeAsync((row, col, cellType));
+    }
+}
+
