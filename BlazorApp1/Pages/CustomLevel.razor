@@ -3,6 +3,7 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject BlazorApp1.Services.SnakeGameEngine GameEngine
+@using BlazorApp1.Models
 
 <PageTitle>Custom Snake Level</PageTitle>
 
@@ -20,59 +21,6 @@
                     <input type="text" @bind="description" @bind:event="oninput" placeholder="My Custom Level" class="form-control" />
                 </div>
 
-                <div class="form-group">
-                    <label>End Portal (row,col):</label>
-                    <input @ref="portalInputRef" type="text" @bind="portalInput" @bind:event="onchange"
-                           @oninput="@((ChangeEventArgs e) => portalInput = e.Value?.ToString() ?? "")"
-                           @onfocus="@(() => focusedField = "portal")"
-                           @onblur="@(() => focusedField = "")"
-                           placeholder="17,14" class="form-control" />
-                </div>
-
-                <div class="form-group">
-                    <label>Snake Segments (row,col;row,col;... head first):</label>
-                    <input @ref="snakeInputRef" type="text" @bind="snakeInput" @bind:event="onchange"
-                           @oninput="@((ChangeEventArgs e) => snakeInput = e.Value?.ToString() ?? "")"
-                           @onfocus="@(() => focusedField = "snake")"
-                           @onblur="@(() => focusedField = "")"
-                           placeholder="17,3;17,2;17,1" class="form-control" />
-                </div>
-
-                <div class="form-group">
-                    <label>Apples (row,col;row,col;... optional):</label>
-                    <input @ref="applesInputRef" type="text" @bind="applesInput" @bind:event="onchange"
-                           @oninput="@((ChangeEventArgs e) => applesInput = e.Value?.ToString() ?? "")"
-                           @onfocus="@(() => focusedField = "apples")"
-                           @onblur="@(() => focusedField = "")"
-                           placeholder="15,10;17,14" class="form-control" />
-                </div>
-
-                <div class="form-group">
-                    <label>Ground Blocks (row,col;row,col;...):</label>
-                    <textarea @ref="groundInputRef" @bind="groundInput" @bind:event="onchange"
-                              @oninput="@((ChangeEventArgs e) => groundInput = e.Value?.ToString() ?? "")"
-                              @onfocus="@(() => focusedField = "ground")"
-                              @onblur="@(() => focusedField = "")"
-                              placeholder="18,2;18,3;18,4" class="form-control" rows="3"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Pushable Blocks (row,col;row,col;... optional):</label>
-                    <input @ref="pushableInputRef" type="text" @bind="pushableInput" @bind:event="onchange"
-                           @oninput="@((ChangeEventArgs e) => pushableInput = e.Value?.ToString() ?? "")"
-                           @onfocus="@(() => focusedField = "pushable")"
-                           @onblur="@(() => focusedField = "")"
-                           placeholder="17,5" class="form-control" />
-                </div>
-
-                <div class="form-group">
-                    <label>Bombs (row,col;row,col;... optional):</label>
-                    <input @ref="bombsInputRef" type="text" @bind="bombsInput" @bind:event="onchange"
-                           @oninput="@((ChangeEventArgs e) => bombsInput = e.Value?.ToString() ?? "")"
-                           @onfocus="@(() => focusedField = "bombs")"
-                           @onblur="@(() => focusedField = "")"
-                           placeholder="17,10" class="form-control" />
-                </div>
 
             <div class="button-group">
                 <button class="game-button" @onclick="PlayLevel">Play Level</button>
@@ -133,25 +81,37 @@
         </div>
         
         <div class="level-preview">
-            <h3>Preview</h3>
+            <div class="editor-header">
+                <h3>Edit</h3>
+                <div class="block-type-selectors">
+                    <div class="block-selector @(selectedBlockType == "snake" ? "selected" : "")" @onclick='() => selectedBlockType = "snake"'>
+                        <div class="block-preview snake-head"></div>
+                    </div>
+                    <div class="block-selector @(selectedBlockType == "apple" ? "selected" : "")" @onclick='() => selectedBlockType = "apple"'>
+                        <div class="block-preview apple"></div>
+                    </div>
+                    <div class="block-selector @(selectedBlockType == "portal" ? "selected" : "")" @onclick='() => selectedBlockType = "portal"'>
+                        <div class="block-preview portal"></div>
+                    </div>
+                    <div class="block-selector @(selectedBlockType == "ground" ? "selected" : "")" @onclick='() => selectedBlockType = "ground"'>
+                        <div class="block-preview ground-block"></div>
+                    </div>
+                    <div class="block-selector @(selectedBlockType == "pushable" ? "selected" : "")" @onclick='() => selectedBlockType = "pushable"'>
+                        <div class="block-preview pushable-block"></div>
+                    </div>
+                    <div class="block-selector @(selectedBlockType == "bomb" ? "selected" : "")" @onclick='() => selectedBlockType = "bomb"'>
+                        <div class="block-preview bomb"></div>
+                    </div>
+                </div>
+            </div>
             <InteractiveGameGrid 
-                Snake="@GetPreviewSnake()"
-                Apples="@GetPreviewApples()"
-                Portal="@GetPreviewPortal()"
-                GroundBlocks="@GetPreviewGroundBlocks()"
-                PushableBlocks="@GetPreviewPushableBlocks()"
-                Bombs="@GetPreviewBombs()"
+                Snake="@snakeSegments"
+                Apples="@apples"
+                Portal="@portal"
+                GroundBlocks="@groundBlocks"
+                PushableBlocks="@pushableBlocks"
+                Bombs="@bombs"
                 OnCellClicked="@HandleCellClick" />
-            <p class="preview-hint">Live preview of your level (invalid positions are ignored)<br/>
-               @if (!string.IsNullOrEmpty(focusedField))
-               {
-                   <span>Click empty cells to add @focusedField positions, or click filled cells to remove them.</span>
-               }
-               else
-               {
-                   <span>Focus a position text box to add positions by clicking.</span>
-               }
-            </p>
         </div>
     </div>
     }
@@ -206,29 +166,23 @@
 @code {
     private const int GridSize = 20;
 
-    // Editor fields
+    // Editor fields - now using lists instead of strings
     private string description = "";
-    private string portalInput = "";
-    private string snakeInput = "";
-    private string applesInput = "";
-    private string groundInput = "";
-    private string pushableInput = "";
-    private string bombsInput = "";
+    private List<Position> snakeSegments = new();
+    private List<Position> apples = new();
+    private Position? portal = null;
+    private List<Position> groundBlocks = new();
+    private List<Position> pushableBlocks = new();
+    private List<Position> bombs = new();
+    
     private string errorMessage = "";
     private bool showShareUrl = false;
     private string shareUrl = "";
-    private string focusedField = "";
+    private string selectedBlockType = "snake"; // Which block type is currently selected
     private bool showSavePrompt = false;
     private string saveLevelName = "";
     private Dictionary<string, string> savedLevels = new();
 
-    // Element references for focus management
-    private ElementReference portalInputRef;
-    private ElementReference snakeInputRef;
-    private ElementReference applesInputRef;
-    private ElementReference groundInputRef;
-    private ElementReference pushableInputRef;
-    private ElementReference bombsInputRef;
 
     // Game state - use GameEngine properties
     private bool levelStarted = false;
@@ -284,28 +238,28 @@
                     description = value;
                     break;
                 case "E":
-                    portalInput = value;
+                    portal = TryParsePosition(value);
                     break;
                 case "S":
-                    snakeInput = value;
+                    snakeSegments = ParsePositionListSafe(value);
                     break;
                 case "A":
-                    applesInput = value;
+                    apples = ParsePositionListSafe(value);
                     break;
                 case "G":
-                    groundInput = value;
+                    groundBlocks = ParsePositionListSafe(value);
                     break;
                 case "P":
-                    pushableInput = value;
+                    pushableBlocks = ParsePositionListSafe(value);
                     break;
                 case "B":
-                    bombsInput = value;
+                    bombs = ParsePositionListSafe(value);
                     break;
             }
         }
 
         // If we have data in the URL, auto-play the level
-        if (!string.IsNullOrEmpty(snakeInput) && !string.IsNullOrEmpty(portalInput))
+        if (snakeSegments.Any() && portal != null)
         {
             PlayLevel();
         }
@@ -342,152 +296,29 @@
         error = "";
 
         // Validate End Portal (required)
-        if (string.IsNullOrWhiteSpace(portalInput))
+        if (portal == null)
         {
-            error = "End Portal position is required (format: row,col)";
-            return false;
-        }
-        try
-        {
-            ParsePosition(portalInput.Trim(), "End Portal");
-        }
-        catch (Exception ex)
-        {
-            error = ex.Message;
+            error = "End Portal position is required. Click a cell with Portal selected.";
             return false;
         }
 
         // Validate Snake (required, at least 1 segment)
-        if (string.IsNullOrWhiteSpace(snakeInput))
+        if (snakeSegments.Count == 0)
         {
-            error = "Snake segments are required (format: row,col;row,col;... with head first)";
-            return false;
-        }
-        try
-        {
-            var snakeSegments = ParsePositionList(snakeInput.Trim(), "Snake");
-            if (snakeSegments.Count == 0)
-            {
-                error = "Snake must have at least 1 segment";
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            error = ex.Message;
+            error = "Snake segments are required (at least 1 segment). Click cells with Snake selected.";
             return false;
         }
 
         // Validate Ground Blocks (required, at least 3)
-        if (string.IsNullOrWhiteSpace(groundInput))
+        if (groundBlocks.Count < 3)
         {
-            error = "Ground blocks are required (at least 3 blocks for support)";
+            error = $"Ground blocks must have at least 3 blocks (currently {groundBlocks.Count}). Click cells with Ground selected.";
             return false;
-        }
-        try
-        {
-            var groundBlocks = ParsePositionList(groundInput.Trim(), "Ground Blocks");
-            if (groundBlocks.Count < 3)
-            {
-                error = $"Ground blocks must have at least 3 blocks (found {groundBlocks.Count})";
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            error = ex.Message;
-            return false;
-        }
-
-        // Validate optional fields if provided
-        if (!string.IsNullOrWhiteSpace(applesInput))
-        {
-            try
-            {
-                ParsePositionList(applesInput.Trim(), "Apples");
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-                return false;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(pushableInput))
-        {
-            try
-            {
-                ParsePositionList(pushableInput.Trim(), "Pushable Blocks");
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-                return false;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(bombsInput))
-        {
-            try
-            {
-                ParsePositionList(bombsInput.Trim(), "Bombs");
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-                return false;
-            }
         }
 
         return true;
     }
 
-    private Position ParsePosition(string posStr, string sectionName)
-    {
-        var parts = posStr.Split(',');
-        if (parts.Length != 2)
-        {
-            throw new Exception($"{sectionName}: Invalid position format '{posStr}' (expected: row,col)");
-        }
-        
-        if (!int.TryParse(parts[0].Trim(), out int row))
-        {
-            throw new Exception($"{sectionName}: Invalid row value '{parts[0].Trim()}' in position '{posStr}'");
-        }
-        
-        if (!int.TryParse(parts[1].Trim(), out int col))
-        {
-            throw new Exception($"{sectionName}: Invalid column value '{parts[1].Trim()}' in position '{posStr}'");
-        }
-
-        if (row < 0 || row >= 20 || col < 0 || col >= 20)
-        {
-            throw new Exception($"{sectionName}: Position ({row},{col}) is out of bounds (grid is 0-19)");
-        }
-
-        return new Position(row, col);
-    }
-
-    private List<Position> ParsePositionList(string positionsStr, string sectionName)
-    {
-        var positions = new List<Position>();
-        var parts = positionsStr.Split(';')
-            .Select(p => p.Trim())
-            .Where(p => !string.IsNullOrWhiteSpace(p))
-            .ToArray();
-
-        if (parts.Length == 0)
-        {
-            throw new Exception($"{sectionName}: No valid positions found");
-        }
-
-        foreach (var part in parts)
-        {
-            positions.Add(ParsePosition(part, sectionName));
-        }
-
-        return positions;
-    }
 
     private void RetryLevel()
     {
@@ -534,23 +365,23 @@
         if (!string.IsNullOrWhiteSpace(description))
             parts.Add($"D={System.Net.WebUtility.UrlEncode(description)}");
         
-        if (!string.IsNullOrWhiteSpace(portalInput))
-            parts.Add($"E={portalInput.Trim()}");
+        if (portal != null)
+            parts.Add($"E={portal.Row},{portal.Col}");
         
-        if (!string.IsNullOrWhiteSpace(snakeInput))
-            parts.Add($"S={snakeInput.Trim()}");
+        if (snakeSegments.Any())
+            parts.Add($"S={string.Join(";", snakeSegments.Select(p => $"{p.Row},{p.Col}"))}");
         
-        if (!string.IsNullOrWhiteSpace(applesInput))
-            parts.Add($"A={applesInput.Trim()}");
+        if (apples.Any())
+            parts.Add($"A={string.Join(";", apples.Select(p => $"{p.Row},{p.Col}"))}");
         
-        if (!string.IsNullOrWhiteSpace(groundInput))
-            parts.Add($"G={groundInput.Trim()}");
+        if (groundBlocks.Any())
+            parts.Add($"G={string.Join(";", groundBlocks.Select(p => $"{p.Row},{p.Col}"))}");
         
-        if (!string.IsNullOrWhiteSpace(pushableInput))
-            parts.Add($"P={pushableInput.Trim()}");
+        if (pushableBlocks.Any())
+            parts.Add($"P={string.Join(";", pushableBlocks.Select(p => $"{p.Row},{p.Col}"))}");
         
-        if (!string.IsNullOrWhiteSpace(bombsInput))
-            parts.Add($"B={bombsInput.Trim()}");
+        if (bombs.Any())
+            parts.Add($"B={string.Join(";", bombs.Select(p => $"{p.Row},{p.Col}"))}");
 
         return string.Join("&", parts);
     }
@@ -662,12 +493,12 @@
             
             // Reset all fields
             description = "";
-            portalInput = "";
-            snakeInput = "";
-            applesInput = "";
-            groundInput = "";
-            pushableInput = "";
-            bombsInput = "";
+            portal = null;
+            snakeSegments = new List<Position>();
+            apples = new List<Position>();
+            groundBlocks = new List<Position>();
+            pushableBlocks = new List<Position>();
+            bombs = new List<Position>();
             
             // Parse the saved level data
             foreach (var param in parameters)
@@ -684,22 +515,22 @@
                         description = value;
                         break;
                     case "E":
-                        portalInput = value;
+                        portal = TryParsePosition(value);
                         break;
                     case "S":
-                        snakeInput = value;
+                        snakeSegments = ParsePositionListSafe(value);
                         break;
                     case "A":
-                        applesInput = value;
+                        apples = ParsePositionListSafe(value);
                         break;
                     case "G":
-                        groundInput = value;
+                        groundBlocks = ParsePositionListSafe(value);
                         break;
                     case "P":
-                        pushableInput = value;
+                        pushableBlocks = ParsePositionListSafe(value);
                         break;
                     case "B":
-                        bombsInput = value;
+                        bombs = ParsePositionListSafe(value);
                         break;
                 }
             }
@@ -738,9 +569,7 @@
         }
     }
 
-    // Preview helper methods - parse without throwing exceptions
-    
-    // Reusable helper to convert semicolon-delimited position strings to List<Position>
+    // Helper methods for parsing position strings
     private List<Position> ParsePositionListSafe(string input)
     {
         try
@@ -761,30 +590,6 @@
         }
     }
 
-    private List<Position> GetPreviewSnake() => ParsePositionListSafe(snakeInput);
-
-    private List<Position> GetPreviewApples() => ParsePositionListSafe(applesInput);
-
-    private Position? GetPreviewPortal()
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(portalInput))
-                return null;
-            
-            return TryParsePosition(portalInput.Trim());
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private List<Position> GetPreviewGroundBlocks() => ParsePositionListSafe(groundInput);
-
-    private List<Position> GetPreviewPushableBlocks() => ParsePositionListSafe(pushableInput);
-
-    private List<Position> GetPreviewBombs() => ParsePositionListSafe(bombsInput);
 
     private Position? TryParsePosition(string posStr)
     {
@@ -811,108 +616,97 @@
         }
     }
 
-    private async Task HandleCellClick((int row, int col, string cellType) clickInfo)
+    private void HandleCellClick((int row, int col, string cellType) clickInfo)
     {
-        var posStr = $"{clickInfo.row},{clickInfo.col}";
+        var pos = new Position(clickInfo.row, clickInfo.col);
         
-        // If cell is not empty, remove it from the appropriate field and set focus to that field
+        // If cell is not empty, remove it from the appropriate list and switch to that block type
         if (!string.IsNullOrEmpty(clickInfo.cellType))
         {
-            await RemovePositionFromFieldAndFocus(posStr, clickInfo.cellType);
-            StateHasChanged();
+            RemoveBlockAtPosition(pos, clickInfo.cellType);
+            // Switch to the block type that was just removed
+            selectedBlockType = MapCellTypeToBlockType(clickInfo.cellType);
         }
-        // If cell is empty and a field has focus, add position to that field
-        else if (!string.IsNullOrEmpty(focusedField))
+        // If cell is empty, add a block of the selected type
+        else
         {
-            AddPositionToField(posStr, focusedField);
-            StateHasChanged();
+            AddBlockAtPosition(pos, selectedBlockType);
         }
+        
+        StateHasChanged();
     }
 
-    private async Task RemovePositionFromFieldAndFocus(string posStr, string cellType)
+    private string MapCellTypeToBlockType(string cellType)
     {
-        // Determine which field to remove from based on cell type
+        return cellType switch
+        {
+            "snake-head" => "snake",
+            "snake-body" => "snake",
+            "apple" => "apple",
+            "portal" => "portal",
+            "ground-block" => "ground",
+            "pushable-block" => "pushable",
+            "bomb" => "bomb",
+            _ => selectedBlockType
+        };
+    }
+
+    private void RemoveBlockAtPosition(Position pos, string cellType)
+    {
         switch (cellType)
         {
             case "snake-head":
             case "snake-body":
-                RemovePosition(ref snakeInput, posStr);
-                focusedField = "snake";
-                await JSRuntime.InvokeVoidAsync("eval", $"document.querySelector('input[placeholder=\"17,3;17,2;17,1\"]').focus()");
-                await snakeInputRef.FocusAsync();
+                snakeSegments.Remove(pos);
                 break;
             case "apple":
-                RemovePosition(ref applesInput, posStr);
-                focusedField = "apples";
-                await applesInputRef.FocusAsync();
+                apples.Remove(pos);
                 break;
             case "portal":
-                portalInput = "";
-                focusedField = "portal";
-                await portalInputRef.FocusAsync();
+                portal = null;
                 break;
             case "ground-block":
-                RemovePosition(ref groundInput, posStr);
-                focusedField = "ground";
-                await groundInputRef.FocusAsync();
+                groundBlocks.Remove(pos);
                 break;
             case "pushable-block":
-                RemovePosition(ref pushableInput, posStr);
-                focusedField = "pushable";
-                await pushableInputRef.FocusAsync();
+                pushableBlocks.Remove(pos);
                 break;
             case "bomb":
-                RemovePosition(ref bombsInput, posStr);
-                focusedField = "bombs";
-                await bombsInputRef.FocusAsync();
+                bombs.Remove(pos);
                 break;
         }
     }
 
-    private void RemovePosition(ref string field, string posStr)
+    private void AddBlockAtPosition(Position pos, string blockType)
     {
-        if (string.IsNullOrWhiteSpace(field))
-            return;
-
-        var positions = field.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(p => p != posStr)
-            .ToList();
-
-        field = string.Join(";", positions);
-    }
-
-    private void AddPositionToField(string posStr, string fieldName)
-    {
-        switch (fieldName)
+        switch (blockType)
         {
-            case "portal":
-                portalInput = posStr;
-                break;
             case "snake":
-                AppendPosition(ref snakeInput, posStr);
+                if (!snakeSegments.Contains(pos))
+                    snakeSegments.Add(pos);
                 break;
-            case "apples":
-                AppendPosition(ref applesInput, posStr);
+            case "apple":
+                if (!apples.Contains(pos))
+                    apples.Add(pos);
+                break;
+            case "portal":
+                portal = pos;
                 break;
             case "ground":
-                AppendPosition(ref groundInput, posStr);
+                if (!groundBlocks.Contains(pos))
+                    groundBlocks.Add(pos);
                 break;
             case "pushable":
-                AppendPosition(ref pushableInput, posStr);
+                if (!pushableBlocks.Contains(pos))
+                    pushableBlocks.Add(pos);
                 break;
-            case "bombs":
-                AppendPosition(ref bombsInput, posStr);
+            case "bomb":
+                if (!bombs.Contains(pos))
+                    bombs.Add(pos);
                 break;
         }
     }
 
-    private void AppendPosition(ref string field, string posStr)
-    {
-        if (!field.Contains(posStr))
-        {
-            field = field.TrimEnd(';') + ";" + posStr;
-        }
-    }
 
     private void InitializeGame(LevelConfig config)
     {
@@ -964,92 +758,5 @@
         // Clean up keyboard handler
         JSRuntime.InvokeVoidAsync("cleanupKeyboardHandler");
     }
-    
-    private record LevelConfig(
-        string Description,
-        List<Position> SnakeSegments,
-        List<Position> Apples,
-        Position Portal,
-        List<Position> GroundBlocks,
-        List<Position> PushableBlocks,
-        List<Position> Bombs
-    )
-    {
-        public static LevelConfig Parse(string compact)
-        {
-            var description = "";
-            var snakeSegments = new List<Position>();
-            var apples = new List<Position>();
-            Position? portal = null;
-            var groundBlocks = new List<Position>();
-            var pushableBlocks = new List<Position>();
-            var bombs = new List<Position>();
-
-            var sections = compact.Split('&');
-            foreach (var section in sections)
-            {
-                if (string.IsNullOrWhiteSpace(section)) continue;
-                
-                var equalIndex = section.IndexOf('=');
-                if (equalIndex < 0) continue;
-
-                var sectionType = section[0];
-                var sectionData = section.Substring(equalIndex + 1);
-
-                switch (sectionType)
-                {
-                    case 'D':
-                        description = System.Net.WebUtility.UrlDecode(sectionData);
-                        break;
-                    case 'E':
-                        portal = ParsePosition(sectionData);
-                        break;
-                    case 'S':
-                        snakeSegments = ParsePositions(sectionData);
-                        break;
-                    case 'A':
-                        apples = ParsePositions(sectionData);
-                        break;
-                    case 'G':
-                        groundBlocks = ParsePositions(sectionData);
-                        break;
-                    case 'P':
-                        pushableBlocks = ParsePositions(sectionData);
-                        break;
-                    case 'B':
-                        bombs = ParsePositions(sectionData);
-                        break;
-                }
-            }
-
-            return new LevelConfig(
-                description,
-                snakeSegments,
-                apples,
-                portal ?? new Position(0, 0),
-                groundBlocks,
-                pushableBlocks,
-                bombs
-            );
-        }
-
-        private static Position ParsePosition(string pos)
-        {
-            var parts = pos.Split(',');
-            return new Position(int.Parse(parts[0]), int.Parse(parts[1]));
-        }
-
-        private static List<Position> ParsePositions(string positions)
-        {
-            if (string.IsNullOrWhiteSpace(positions))
-                return new List<Position>();
-
-            return positions.Split(';')
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p => ParsePosition(p))
-                .ToList();
-        }
-    };
 }
 

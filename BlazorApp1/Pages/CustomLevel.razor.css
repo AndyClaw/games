@@ -34,19 +34,57 @@
     gap: 10px;
 }
 
+.editor-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.editor-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.block-type-selectors {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.block-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.block-selector:hover {
+    background-color: #e0e0e0;
+}
+
+.block-selector.selected {
+    border: 3px solid #4CAF50;
+    background-color: #e8f5e9;
+}
+
+.block-preview {
+    width: 25px;
+    height: 25px;
+}
+
 .level-preview h3 {
     margin: 0 0 10px 0;
     color: #333;
 }
 
-.preview-hint {
-    margin: 10px 0 0 0;
-    font-size: 12px;
-    color: #666;
-    font-style: italic;
-    text-align: center;
-    max-width: 520px;
-}
 
 .level-editor h2 {
     margin-top: 0;
@@ -245,13 +283,13 @@ textarea.form-control {
 }
 
 .apple {
-    background-color: #f44336;
+    background-color: #4CAF50;
     border-radius: 50%;
     margin: 3px;
 }
 
 .portal {
-    background: linear-gradient(45deg, #9C27B0, #E91E63);
+    background: linear-gradient(45deg, #6A1B9A, #7B1FA2);
     border-radius: 3px;
 }
 
@@ -270,6 +308,7 @@ textarea.form-control {
     margin: 3px;
 }
 
+.controls {
 .controls {
     display: flex;
     flex-direction: column;
