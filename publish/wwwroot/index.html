@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BlazorApp1</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="BlazorApp1.styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        // Store the current keyboard handler
+        window.currentSnakeGameHelper = null;
+        window.snakeGameKeyHandler = null;
+        
+        window.setupKeyboardHandler = function (dotnetHelper) {
+            // Clean up any existing handler first
+            window.cleanupKeyboardHandler();
+            
+            // Store the new helper
+            window.currentSnakeGameHelper = dotnetHelper;
+            
+            // Create new handler
+            window.snakeGameKeyHandler = function (event) {
+                if (event.key.startsWith('Arrow')) {
+                    event.preventDefault();
+                    if (window.currentSnakeGameHelper) {
+                        window.currentSnakeGameHelper.invokeMethodAsync('HandleKeyPress', event.key);
+                    }
+                }
+            };
+            
+            // Add the new handler
+            document.addEventListener('keydown', window.snakeGameKeyHandler);
+        };
+        
+        window.cleanupKeyboardHandler = function () {
+            // Remove event listener if it exists
+            if (window.snakeGameKeyHandler) {
+                document.removeEventListener('keydown', window.snakeGameKeyHandler);
+                window.snakeGameKeyHandler = null;
+            }
+            
+            // Clear the helper reference
+            window.currentSnakeGameHelper = null;
+        };
+
+        // LocalStorage functions for saved levels
+        window.saveCustomLevel = function (levelName, levelData) {
+            try {
+                const savedLevels = window.getSavedLevels();
+                savedLevels[levelName] = levelData;
+                localStorage.setItem('snakeGameCustomLevels', JSON.stringify(savedLevels));
+                return true;
+            } catch (e) {
+                console.error('Error saving level:', e);
+                return false;
+            }
+        };
+
+        window.getSavedLevels = function () {
+            try {
+                const data = localStorage.getItem('snakeGameCustomLevels');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Error loading saved levels:', e);
+                return {};
+            }
+        };
+
+        window.deleteCustomLevel = function (levelName) {
+            try {
+                const savedLevels = window.getSavedLevels();
+                delete savedLevels[levelName];
+                localStorage.setItem('snakeGameCustomLevels', JSON.stringify(savedLevels));
+                return true;
+            } catch (e) {
+                console.error('Error deleting level:', e);
+                return false;
+            }
+        };
+    </script>
+</body>
+
+</html>
