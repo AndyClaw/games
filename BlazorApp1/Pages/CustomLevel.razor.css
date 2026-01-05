@@ -104,6 +104,78 @@ textarea.form-control {
     color: #2e7d32;
 }
 
+.save-section {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #e3f2fd;
+    border-radius: 8px;
+    border: 2px solid #2196F3;
+}
+
+.save-section h3 {
+    margin-top: 0;
+    color: #1976d2;
+}
+
+.saved-levels-section {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #fff3e0;
+    border-radius: 8px;
+    border: 2px solid #FF9800;
+}
+
+.saved-levels-section h3 {
+    margin-top: 0;
+    color: #f57c00;
+}
+
+.saved-levels-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.saved-level-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: white;
+    border-radius: 5px;
+    border: 1px solid #FFB74D;
+}
+
+.saved-level-name {
+    flex: 1;
+    cursor: pointer;
+    color: #e65100;
+    font-weight: bold;
+    user-select: none;
+}
+
+.saved-level-name:hover {
+    color: #ff6f00;
+    text-decoration: underline;
+}
+
+.delete-button {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.delete-button:hover {
+    background-color: #d32f2f;
+}
+
+
 .share-url-box {
     display: flex;
     gap: 10px;

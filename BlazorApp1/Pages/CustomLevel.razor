@@ -77,8 +77,40 @@
             <div class="button-group">
                 <button class="game-button" @onclick="PlayLevel">Play Level</button>
                 <button class="game-button" @onclick="ShareLevel">Share Level</button>
+                <button class="game-button" @onclick="SaveLevel">Save Level</button>
                 <button class="game-button secondary" @onclick="BackToMenu">Back to Menu</button>
             </div>
+
+            @if (showSavePrompt)
+            {
+                <div class="save-section">
+                    <h3>Save Level</h3>
+                    <div class="form-group">
+                        <label>Level Name:</label>
+                        <input type="text" @bind="saveLevelName" placeholder="My Awesome Level" class="form-control" />
+                    </div>
+                    <div class="button-group">
+                        <button class="game-button" @onclick="ConfirmSaveLevel">Confirm Save</button>
+                        <button class="game-button secondary" @onclick="CancelSave">Cancel</button>
+                    </div>
+                </div>
+            }
+
+            @if (savedLevels.Any())
+            {
+                <div class="saved-levels-section">
+                    <h3>Saved Levels</h3>
+                    <div class="saved-levels-list">
+                        @foreach (var level in savedLevels)
+                        {
+                            <div class="saved-level-item">
+                                <span class="saved-level-name" @onclick="() => LoadSavedLevel(level.Key)">@level.Key</span>
+                                <button class="delete-button" @onclick="() => DeleteSavedLevel(level.Key)">🗑️</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
 
             @if (showShareUrl)
             {
@@ -186,6 +218,9 @@
     private bool showShareUrl = false;
     private string shareUrl = "";
     private string focusedField = "";
+    private bool showSavePrompt = false;
+    private string saveLevelName = "";
+    private Dictionary<string, string> savedLevels = new();
 
     // Element references for focus management
     private ElementReference portalInputRef;
@@ -222,6 +257,7 @@
         if (firstRender)
         {
             await JSRuntime.InvokeVoidAsync("setupKeyboardHandler", DotNetObjectReference.Create(this));
+            await LoadSavedLevelsFromStorage();
         }
     }
 
@@ -538,6 +574,168 @@
     private void BackToMenu()
     {
         NavigationManager.NavigateTo("/snake");
+    }
+
+    // Save/Load/Delete functionality
+    private async Task LoadSavedLevelsFromStorage()
+    {
+        try
+        {
+            var levelsJson = await JSRuntime.InvokeAsync<Dictionary<string, string>>("getSavedLevels");
+            savedLevels = levelsJson ?? new Dictionary<string, string>();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading saved levels: {ex.Message}");
+            savedLevels = new Dictionary<string, string>();
+        }
+    }
+
+    private void SaveLevel()
+    {
+        // Validate before showing save prompt
+        if (!ValidateLevel(out var validationError))
+        {
+            errorMessage = validationError;
+            return;
+        }
+
+        errorMessage = "";
+        showShareUrl = false;
+        showSavePrompt = true;
+        saveLevelName = description; // Pre-fill with description
+    }
+
+    private void CancelSave()
+    {
+        showSavePrompt = false;
+        saveLevelName = "";
+    }
+
+    private async Task ConfirmSaveLevel()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(saveLevelName))
+            {
+                errorMessage = "Please enter a name for the level";
+                return;
+            }
+
+            var compactString = BuildCompactString();
+            
+            // Save to localStorage via JavaScript
+            var success = await JSRuntime.InvokeAsync<bool>("saveCustomLevel", saveLevelName, compactString);
+            
+            if (success)
+            {
+                savedLevels[saveLevelName] = compactString;
+                showSavePrompt = false;
+                saveLevelName = "";
+                errorMessage = "";
+                StateHasChanged();
+            }
+            else
+            {
+                errorMessage = "Failed to save level. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving level: {ex.Message}";
+        }
+    }
+
+    private void LoadSavedLevel(string levelName)
+    {
+        try
+        {
+            if (!savedLevels.ContainsKey(levelName))
+            {
+                errorMessage = "Level not found";
+                return;
+            }
+
+            var compactString = savedLevels[levelName];
+            var parameters = compactString.Split('&');
+            
+            // Reset all fields
+            description = "";
+            portalInput = "";
+            snakeInput = "";
+            applesInput = "";
+            groundInput = "";
+            pushableInput = "";
+            bombsInput = "";
+            
+            // Parse the saved level data
+            foreach (var param in parameters)
+            {
+                var equalIndex = param.IndexOf('=');
+                if (equalIndex < 0) continue;
+
+                var key = param.Substring(0, equalIndex);
+                var value = System.Net.WebUtility.UrlDecode(param.Substring(equalIndex + 1));
+
+                switch (key)
+                {
+                    case "D":
+                        description = value;
+                        break;
+                    case "E":
+                        portalInput = value;
+                        break;
+                    case "S":
+                        snakeInput = value;
+                        break;
+                    case "A":
+                        applesInput = value;
+                        break;
+                    case "G":
+                        groundInput = value;
+                        break;
+                    case "P":
+                        pushableInput = value;
+                        break;
+                    case "B":
+                        bombsInput = value;
+                        break;
+                }
+            }
+
+            errorMessage = "";
+            showShareUrl = false;
+            showSavePrompt = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading level: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteSavedLevel(string levelName)
+    {
+        try
+        {
+            var success = await JSRuntime.InvokeAsync<bool>("deleteCustomLevel", levelName);
+            
+            if (success)
+            {
+                savedLevels.Remove(levelName);
+                errorMessage = "";
+                StateHasChanged();
+            }
+            else
+            {
+                errorMessage = "Failed to delete level. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting level: {ex.Message}";
+        }
     }
 
     // Preview helper methods - parse without throwing exceptions

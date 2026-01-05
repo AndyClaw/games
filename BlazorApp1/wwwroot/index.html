@@ -63,6 +63,41 @@
             // Clear the helper reference
             window.currentSnakeGameHelper = null;
         };
+
+        // LocalStorage functions for saved levels
+        window.saveCustomLevel = function (levelName, levelData) {
+            try {
+                const savedLevels = window.getSavedLevels();
+                savedLevels[levelName] = levelData;
+                localStorage.setItem('snakeGameCustomLevels', JSON.stringify(savedLevels));
+                return true;
+            } catch (e) {
+                console.error('Error saving level:', e);
+                return false;
+            }
+        };
+
+        window.getSavedLevels = function () {
+            try {
+                const data = localStorage.getItem('snakeGameCustomLevels');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                console.error('Error loading saved levels:', e);
+                return {};
+            }
+        };
+
+        window.deleteCustomLevel = function (levelName) {
+            try {
+                const savedLevels = window.getSavedLevels();
+                delete savedLevels[levelName];
+                localStorage.setItem('snakeGameCustomLevels', JSON.stringify(savedLevels));
+                return true;
+            } catch (e) {
+                console.error('Error deleting level:', e);
+                return false;
+            }
+        };
     </script>
 </body>
 
