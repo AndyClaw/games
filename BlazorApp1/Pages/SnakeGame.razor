@@ -3,8 +3,8 @@
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
-@inject BlazorApp1.Services.SnakeGameEngine GameEngine
-@using BlazorApp1.Models
+@inject SnakeGameEngine GameEngine
+@using BlazorApp1.Services
 
 <PageTitle>Snake Game</PageTitle>
 
@@ -79,12 +79,12 @@
             Bombs="@GameEngine.Bombs" />
         <div class="controls">
             <div class="button-row">
-                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Up)">▲</button>
+                <button class="arrow-button" @onclick="() => InputDirection(Direction.Up)">▲</button>
             </div>
             <div class="button-row">
-                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Left)">◄</button>
-                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Down)">▼</button>
-                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Right)">►</button>
+                <button class="arrow-button" @onclick="() => InputDirection(Direction.Left)">◄</button>
+                <button class="arrow-button" @onclick="() => InputDirection(Direction.Down)">▼</button>
+                <button class="arrow-button" @onclick="() => InputDirection(Direction.Right)">►</button>
             </div>
             <div class="button-row">
                 <button class="game-button" @onclick="() => StartLevel(currentLevel)">Retry</button>
@@ -220,7 +220,7 @@
         );
     }
 
-    private async Task ChangeDirection(Services.Direction newDirection)
+    private async Task InputDirection(Services.Direction newDirection)
     {
         if (levelWon || gameOver || GameEngine.IsAnimating)
             return;
@@ -247,7 +247,7 @@
 
         if (direction.HasValue)
         {
-            await ChangeDirection(direction.Value);
+            await InputDirection(direction.Value);
             StateHasChanged(); // Force UI update after processing keyboard input
         }
     }

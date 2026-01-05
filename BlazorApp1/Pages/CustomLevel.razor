@@ -157,12 +157,12 @@
             Bombs="@GameEngine.Bombs" />
         <div class="controls">
             <div class="button-row">
-                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Up)">▲</button>
+                <button class="arrow-button" @onclick="() => InputDirection(Services.Direction.Up)">▲</button>
             </div>
             <div class="button-row">
-                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Left)">◄</button>
-                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Down)">▼</button>
-                <button class="arrow-button" @onclick="() => ChangeDirection(Services.Direction.Right)">►</button>
+                <button class="arrow-button" @onclick="() => InputDirection(Services.Direction.Left)">◄</button>
+                <button class="arrow-button" @onclick="() => InputDirection(Services.Direction.Down)">▼</button>
+                <button class="arrow-button" @onclick="() => InputDirection(Services.Direction.Right)">►</button>
             </div>
             <div class="button-row">
                 <button class="game-button" @onclick="RetryLevel">Retry</button>
@@ -729,17 +729,17 @@
         );
     }
 
-    private void ChangeDirection(Services.Direction newDirection)
+    private async Task InputDirection(Services.Direction newDirection)
     {
         if (levelWon || gameOver || GameEngine.IsAnimating)
             return;
 
-        // Use synchronous version without animation for custom level editor
-        GameEngine.MoveSnake(newDirection);
+        // Move the snake using game engine with animated gravity
+        await GameEngine.MoveSnakeWithAnimatedGravity(newDirection);
     }
 
     [JSInvokable]
-    public void HandleKeyPress(string key)
+    public async Task HandleKeyPress(string key)
     {
         if (!levelStarted || levelWon || gameOver || GameEngine.IsAnimating)
             return;
@@ -755,7 +755,7 @@
 
         if (direction.HasValue)
         {
-            ChangeDirection(direction.Value);
+            await InputDirection(direction.Value);
         }
     }
 

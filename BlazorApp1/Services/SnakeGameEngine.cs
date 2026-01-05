@@ -1,5 +1,4 @@
 using BlazorApp1.Models;
-using Microsoft.JSInterop;
 
 namespace BlazorApp1.Services;
 
@@ -44,17 +43,11 @@ public class SnakeGameEngine
 
     public async Task MoveSnakeWithAnimatedGravity(Direction direction)
     {
-        if (SnakeMoveNeedsGravity(direction)) return;
+        if (SnakeMovedNoGravityNeeded(direction)) return;
         await ApplyGravityAnimatedAsync();
     }
-    
-    public void MoveSnakeNoAnimation(Direction direction, bool useAnimatedGravity = true)
-    {
-        if (SnakeMoveNeedsGravity(direction)) return;
-        ApplyGravity();
-    }
 
-    private bool SnakeMoveNeedsGravity(Direction direction)
+    private bool SnakeMovedNoGravityNeeded(Direction direction)
     {
         if (Snake.Count == 0 || LevelWon || GameOver || IsAnimating)
             return true;
@@ -149,10 +142,6 @@ public class SnakeGameEngine
         return false;
     }
 
-    public void MoveSnake(Direction direction)
-    {
-        MoveSnakeNoAnimation(direction);
-    }
 
     private async Task ApplyGravityAnimatedAsync()
     {
@@ -241,70 +230,6 @@ public class SnakeGameEngine
         }
     }
 
-    private void ApplyGravity()
-    {
-        ApplyGravityToPushableBlocks();
-        ApplyGravityToSnake();
-    }
-
-    private void ApplyGravityToPushableBlocks()
-    {
-        bool blocksStillFalling = true;
-
-        while (blocksStillFalling)
-        {
-            blocksStillFalling = false;
-            List<Position> newPushableBlocks = new List<Position>(PushableBlocks);
-
-            foreach (var block in PushableBlocks.OrderByDescending(b => b.Row))
-            {
-                var belowPos = block.Down();
-
-                if (belowPos.Row < GridSize &&
-                    !GroundBlocks.Contains(belowPos) &&
-                    !newPushableBlocks.Contains(belowPos) &&
-                    !Snake.Any(s => s.Equals(belowPos)) &&
-                    !Apples.Contains(belowPos) &&
-                    !belowPos.Equals(PortalPosition))
-                {
-                    newPushableBlocks.Remove(block);
-                    newPushableBlocks.Add(belowPos);
-                    blocksStillFalling = true;
-                }
-            }
-
-            PushableBlocks = newPushableBlocks;
-        }
-    }
-
-    private void ApplyGravityToSnake()
-    {
-        while (!IsSnakeSupported())
-        {
-            int maxRow = Snake.Max(s => s.Row);
-            if (maxRow >= GridSize - 1)
-            {
-                GameOver = true;
-                GameOverReason = "You fell off the bottom!";
-                return;
-            }
-
-            for (int i = 0; i < Snake.Count; i++)
-            {
-                Snake[i] = Snake[i].Down();
-            }
-
-            foreach (var segment in Snake)
-            {
-                if (Bombs.Contains(segment) && !PushableBlocks.Contains(segment))
-                {
-                    GameOver = true;
-                    GameOverReason = "You hit a bomb while falling!";
-                    return;
-                }
-            }
-        }
-    }
 
     private bool IsSnakeSupported()
     {
