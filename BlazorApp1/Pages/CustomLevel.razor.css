@@ -309,7 +309,6 @@ textarea.form-control {
 }
 
 .controls {
-.controls {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -323,49 +322,6 @@ textarea.form-control {
     justify-content: center;
 }
 
-.arrow-button {
-    width: 60px;
-    height: 60px;
-    font-size: 24px;
-    background-color: #2196F3;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.arrow-button:hover {
-    background-color: #1976D2;
-}
-
-.arrow-button:active {
-    background-color: #0D47A1;
-}
-
-.game-button {
-    padding: 12px 24px;
-    font-size: 16px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    font-weight: bold;
-}
-
-.game-button:hover {
-    background-color: #45a049;
-}
-
-.game-button.secondary {
-    background-color: #757575;
-}
-
-.game-button.secondary:hover {
-    background-color: #616161;
-}
 
 .level-complete {
     text-align: center;
@@ -391,6 +347,29 @@ textarea.form-control {
 .game-over h2 {
     color: #c62828;
     margin-bottom: 20px;
+}
+
+/* Game Over Message in Controls */
+.game-over-message {
+    text-align: center;
+    background-color: #ffebee;
+    border: 3px solid #f44336;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.game-over-message h2 {
+    font-size: 2rem;
+    margin: 0 0 0.5rem 0;
+    color: #c62828;
+}
+
+.game-over-reason {
+    font-size: 1.2rem;
+    margin: 0;
+    color: #d32f2f;
+    font-weight: 600;
 }
 
 .completion-buttons {

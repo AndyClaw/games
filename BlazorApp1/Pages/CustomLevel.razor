@@ -128,9 +128,18 @@
     }
     else if (gameOver)
     {
-        <div class="game-over">
-            <h2>💥 Game Over! 💥</h2>
-            <p>@gameOverReason</p>
+        <GameGrid 
+            Snake="@GameEngine.Snake"
+            Apples="@GameEngine.Apples"
+            Portal="@GameEngine.PortalPosition"
+            GroundBlocks="@GameEngine.GroundBlocks"
+            PushableBlocks="@GameEngine.PushableBlocks"
+            Bombs="@GameEngine.Bombs" />
+        <div class="controls">
+            <div class="game-over-message">
+                <h2>💥 Game Over! 💥</h2>
+                <p class="game-over-reason">@gameOverReason</p>
+            </div>
             <div class="completion-buttons">
                 <button class="game-button" @onclick="RetryLevel">Retry Level</button>
                 <button class="game-button secondary" @onclick="BackToEditor">Back to Editor</button>
