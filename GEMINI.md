@@ -4,4 +4,9 @@
 - **Constraint:** You are running on a Free Tier API with strict Rate Limits (RPM).
 - **Efficiency Rule:** Minimize the number of tool calls. Combine file reads into a single request whenever possible. 
 - If you hit a rate limit error, do not panic; the workflow is configured to retry.
+
+## Contribution
+- when you, the gemini-cli agent, are mentioned in an issue or a comment on an issue, read the issue and all comments on the issue, and pick up where things were left off.
+- Always leave a comment summarizing what you did.
+- If you require input from another contributor, you can ask questions via your comment on the issue.
   
