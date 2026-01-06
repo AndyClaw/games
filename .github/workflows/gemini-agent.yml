@@ -1,4 +1,4 @@
-name: Gemini AI Agent
+name: Gemini AI Agent (Flash + Retry)
 on:
   issue_comment:
     types: [created]
@@ -7,7 +7,6 @@ on:
 
 jobs:
   gemini-job:
-    # Only run if @gemini-cli is mentioned in a comment or issue
     if: contains(github.event.comment.body, '@gemini-cli') || contains(github.event.issue.body, '@gemini-cli')
     runs-on: ubuntu-latest
     permissions:
@@ -34,12 +33,39 @@ jobs:
           git config --global user.name "gemini-bot"
           git config --global user.email "gemini-bot@google.com"
 
-      - name: Run Gemini Agent
+      - name: Run Gemini Agent with Retries
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # This tells Gemini to act on the comment/issue body
-          # Using --yolo allows it to commit/push without manual confirmation
-          gemini --yolo "${{ github.event.comment.body || github.event.issue.body }}"
+          # 1. Initial delay to ensure the API 'cools down' from any previous runs
+          echo "Waiting 15 seconds to prevent immediate rate limit..."
+          sleep 15
+
+          # 2. Extract prompt (from comment or issue body)
+          PROMPT="${{ github.event.comment.body || github.event.issue.body }}"
+
+          # 3. Execution loop with 429 (Rate Limit) detection
+          MAX_ATTEMPTS=3
+          ATTEMPT=1
+          SUCCESS=false
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ] && [ "$SUCCESS" = false ]; do
+            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
+            
+            # Use gemini-1.5-flash for much higher RPM limits
+            if gemini --model gemini-1.5-flash --yolo "$PROMPT"; then
+              SUCCESS=true
+              echo "Task completed successfully."
+            else
+              echo "Request failed or rate limited. Waiting 60 seconds before retry..."
+              sleep 60
+              ATTEMPT=$((ATTEMPT+1))
+            fi
+          done
+
+          if [ "$SUCCESS" = false ]; then
+            echo "Failed after $MAX_ATTEMPTS attempts."
+            exit 1
+          fi
           
