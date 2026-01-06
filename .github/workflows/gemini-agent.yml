@@ -54,8 +54,8 @@ jobs:
 
           while [ $ATTEMPT -le $MAX_ATTEMPTS ] && [ "$SUCCESS" = false ]; do
             echo "Attempt $ATTEMPT using gemini-3-flash..."
-            # Using 'gemini-3-flash' for PhD-level reasoning at Flash speeds
-            if gemini --model gemini-3-flash --yolo "$CONTEXT_PROMPT"; then
+            # Using 'gemini flash' for PhD-level reasoning at Flash speeds
+            if gemini --model gemini-flash-latest --yolo "$CONTEXT_PROMPT"; then
               SUCCESS=true
             else
               echo "Rate limit or API error. Retrying in 60 seconds..."
