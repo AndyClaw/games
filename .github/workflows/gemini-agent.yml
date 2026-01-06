@@ -1,4 +1,4 @@
-name: Gemini AI Agent (Flash + Retry)
+name: Gemini AI Agent (Flash Latest + Context)
 on:
   issue_comment:
     types: [created]
@@ -33,39 +33,36 @@ jobs:
           git config --global user.name "gemini-bot"
           git config --global user.email "gemini-bot@google.com"
 
-      - name: Run Gemini Agent with Retries
+      - name: Run Gemini Agent
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Context variables for the agent
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
         run: |
-          # 1. Initial delay to ensure the API 'cools down' from any previous runs
-          echo "Waiting 15 seconds to prevent immediate rate limit..."
+          echo "Cooling down for 15 seconds..."
           sleep 15
 
-          # 2. Extract prompt (from comment or issue body)
-          PROMPT="${{ github.event.comment.body || github.event.issue.body }}"
+          # Injecting context directly into the prompt
+          USER_INPUT="${{ github.event.comment.body || github.event.issue.body }}"
+          CONTEXT_PROMPT="[CONTEXT: You are responding to Issue #$ISSUE_NUMBER in $REPO. Please read the issue history using the 'gh' tool if needed.] $USER_INPUT"
 
-          # 3. Execution loop with 429 (Rate Limit) detection
           MAX_ATTEMPTS=3
           ATTEMPT=1
           SUCCESS=false
 
           while [ $ATTEMPT -le $MAX_ATTEMPTS ] && [ "$SUCCESS" = false ]; do
-            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
-            
-            # Use gemini-flash for much higher RPM limits
-            if gemini --model gemini-flash-latest --yolo "$PROMPT"; then
+            echo "Attempt $ATTEMPT using gemini-3-flash..."
+            # Using 'gemini-3-flash' for PhD-level reasoning at Flash speeds
+            if gemini --model gemini-3-flash --yolo "$CONTEXT_PROMPT"; then
               SUCCESS=true
-              echo "Task completed successfully."
             else
-              echo "Request failed or rate limited. Waiting 60 seconds before retry..."
+              echo "Rate limit or API error. Retrying in 60 seconds..."
               sleep 60
               ATTEMPT=$((ATTEMPT+1))
             fi
           done
 
-          if [ "$SUCCESS" = false ]; then
-            echo "Failed after $MAX_ATTEMPTS attempts."
-            exit 1
-          fi
+          if [ "$SUCCESS" = false ]; then exit 1; fi
           
