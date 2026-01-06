@@ -53,8 +53,8 @@ jobs:
           while [ $ATTEMPT -le $MAX_ATTEMPTS ] && [ "$SUCCESS" = false ]; do
             echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
             
-            # Use gemini-1.5-flash for much higher RPM limits
-            if gemini --model gemini-1.5-flash --yolo "$PROMPT"; then
+            # Use gemini-flash for much higher RPM limits
+            if gemini --model gemini-flash-latest --yolo "$PROMPT"; then
               SUCCESS=true
               echo "Task completed successfully."
             else
