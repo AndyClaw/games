@@ -33,7 +33,7 @@ A classic snake game implemented in Blazor WebAssembly where the player controls
 - **Automatic**: Gravity applies after each player move
 - **Snake Behavior**:
   - Snake body is **rigid** - maintains its connected shape
-  - If any segment is supported (on ground block or pushable block), entire snake stays in place
+  - If any segment is supported, entire snake stays in place
   - If no support, entire snake falls down as one rigid unit
   - Falls until any segment touches support
   - **Bottom edge (row 19) provides NO support** - falling to the bottom = **game over**
@@ -43,9 +43,9 @@ A classic snake game implemented in Blazor WebAssembly where the player controls
   - Blocks CAN rest on the floor (unlike snake)
   - Can fall onto and cover bombs
 - **Support Rules**:
-  - **For Snake**: Only ground blocks and pushable blocks provide support (NOT floor)
+  - **For Snake**: ground, pushable, and apples provide support.
   - **For Pushable Blocks**: Grid floor (row 19), ground blocks, other pushable blocks, and snake segments provide support
-  - Portal and apples do NOT provide support for anything
+  - Portal may provide support or may not, will revisit this. Not critical.
 
 ### 4. Apple (Food)
 - **Optional**: Not all levels require apples
