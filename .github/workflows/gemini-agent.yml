@@ -1,0 +1,45 @@
+name: Gemini AI Agent
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened]
+
+jobs:
+  gemini-job:
+    # Only run if @gemini-cli is mentioned in a comment or issue
+    if: contains(github.event.comment.body, '@gemini-cli') || contains(github.event.issue.body, '@gemini-cli')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Gemini CLI
+        run: npm install -g @google/gemini-cli
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "gemini-bot"
+          git config --global user.email "gemini-bot@google.com"
+
+      - name: Run Gemini Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This tells Gemini to act on the comment/issue body
+          # Using --yolo allows it to commit/push without manual confirmation
+          gemini --yolo "${{ github.event.comment.body || github.event.issue.body }}"
+          
