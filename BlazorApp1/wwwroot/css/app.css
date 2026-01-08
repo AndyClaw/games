@@ -141,15 +141,15 @@ code {
 
 /* Game button styles */
 button.game-button {
-    padding: 0.75rem 2rem;
-    font-size: 1.1rem;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.95rem;
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.2s;
-    margin: 0.5rem;
+    margin: 0.25rem;
 }
 
 button.game-button:hover {
@@ -192,8 +192,8 @@ button.arrow-button:active {
 
 /* Level button styles */
 button.level-button {
-    width: 300px;
-    padding: 1.5rem;
+    width: 240px;
+    padding: 1rem;
     background-color: #fff;
     border: 3px solid #2196F3;
     border-radius: 10px;
@@ -222,20 +222,20 @@ button.level-button.custom-level:hover {
 }
 
 button.level-button .level-number {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: bold;
     color: #2196F3;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
 }
 
 button.level-button .level-desc {
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: #666;
 }
 
 button.level-button.custom-level .level-number {
     color: #F57C00;
-    font-size: 2rem;
+    font-size: 1.5rem;
 }
 
 button.level-button.custom-level .level-desc {

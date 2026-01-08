@@ -34,11 +34,6 @@
     margin-bottom: 10px;
 }
 
-.editor-header h3 {
-    margin: 0;
-    color: #333;
-}
-
 .block-type-selectors {
     display: flex;
     gap: 10px;
@@ -70,6 +65,14 @@
 .block-preview {
     width: 25px;
     height: 25px;
+}
+
+/* Remove margins from block previews in selectors so they stay square */
+.block-selector .block-preview.apple,
+.block-selector .block-preview.pushable-block,
+.block-selector .block-preview.bomb {
+    margin: 0;
+    padding: 3px;
 }
 
 
@@ -243,11 +246,14 @@ textarea.form-control {
 }
 
 .game-grid {
+    --cell-size: min(25px, calc((100vw - 40px) / 20), calc((100vh - 200px) / 20));
     display: grid;
-    grid-template-columns: repeat(20, 25px);
-    grid-template-rows: repeat(20, 25px);
+    grid-template-columns: repeat(20, var(--cell-size));
+    grid-template-rows: repeat(20, var(--cell-size));
     gap: 0;
     background-color: #f0f0f0;
+    max-width: 500px;
+    max-height: 500px;
 }
 
 .grid-cell {
@@ -267,7 +273,7 @@ textarea.form-control {
 .apple {
     background-color: #4CAF50;
     border-radius: 50%;
-    margin: 3px;
+    margin: 12%;
 }
 
 .portal {
@@ -281,13 +287,13 @@ textarea.form-control {
 
 .pushable-block {
     background-color: #9E9E9E;
-    margin: 3px;
+    margin: 12%;
 }
 
 .bomb {
     background: radial-gradient(circle at center, #FF6B00 0%, #FF6B00 30%, #1a1a1a 31%, #1a1a1a 100%);
     border-radius: 50%;
-    margin: 3px;
+    margin: 12%;
 }
 
 .controls {

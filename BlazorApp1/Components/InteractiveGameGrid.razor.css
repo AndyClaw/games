@@ -1,9 +1,12 @@
 .game-grid {
+    --cell-size: min(25px, calc((100vw - 40px) / 20), calc((100vh - 200px) / 20));
     display: grid;
-    grid-template-columns: repeat(20, 25px);
-    grid-template-rows: repeat(20, 25px);
+    grid-template-columns: repeat(20, var(--cell-size));
+    grid-template-rows: repeat(20, var(--cell-size));
     gap: 0;
     background-color: #f0f0f0;
+    max-width: 500px;
+    max-height: 500px;
 }
 
 .grid-cell {
@@ -28,7 +31,7 @@
 .apple {
     background-color: #4CAF50;
     border-radius: 50%;
-    margin: 3px;
+    margin: 12%;
 }
 
 .portal {
@@ -42,12 +45,12 @@
 
 .pushable-block {
     background-color: #9E9E9E;
-    margin: 3px;
+    margin: 12%;
 }
 
 .bomb {
     background: radial-gradient(circle at center, #FF6B00 0%, #FF6B00 30%, #1a1a1a 31%, #1a1a1a 100%);
     border-radius: 50%;
-    margin: 3px;
+    margin: 12%;
 }
 
