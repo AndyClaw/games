@@ -5,29 +5,63 @@
 @inject BlazorApp1.Services.SnakeGameEngine GameEngine
 @using BlazorApp1.Models
 
-<PageTitle>Custom Snake Level</PageTitle>
-
-<h1>Custom Level Creator</h1>
+<PageTitle>Snake Craft</PageTitle>
 
 <div class="custom-level-container">
     @if (!levelStarted)
     {
-        <div class="editor-with-preview">
-            <div class="level-editor">
-                <h2>Create Your Level</h2>
-                
-                <div class="form-group">
-                    <label>Description:</label>
-                    <input type="text" @bind="description" @bind:event="oninput" placeholder="My Custom Level" class="form-control" />
-                </div>
+        <div class="editor-vertical-layout">
+            <div class="form-group">
+                <label>Description:</label>
+                <input type="text" @bind="description" @bind:event="oninput" placeholder="My Custom Level" class="form-control" />
+            </div>
 
+            <div class="level-preview">
+                <div class="editor-header">
+                    <h3>Edit</h3>
+                    <div class="block-type-selectors">
+                        <div class="block-selector @(selectedBlockType == "snake" ? "selected" : "")" @onclick='() => selectedBlockType = "snake"'>
+                            <div class="block-preview snake-head"></div>
+                        </div>
+                        <div class="block-selector @(selectedBlockType == "apple" ? "selected" : "")" @onclick='() => selectedBlockType = "apple"'>
+                            <div class="block-preview apple"></div>
+                        </div>
+                        <div class="block-selector @(selectedBlockType == "portal" ? "selected" : "")" @onclick='() => selectedBlockType = "portal"'>
+                            <div class="block-preview portal"></div>
+                        </div>
+                        <div class="block-selector @(selectedBlockType == "ground" ? "selected" : "")" @onclick='() => selectedBlockType = "ground"'>
+                            <div class="block-preview ground-block"></div>
+                        </div>
+                        <div class="block-selector @(selectedBlockType == "pushable" ? "selected" : "")" @onclick='() => selectedBlockType = "pushable"'>
+                            <div class="block-preview pushable-block"></div>
+                        </div>
+                        <div class="block-selector @(selectedBlockType == "bomb" ? "selected" : "")" @onclick='() => selectedBlockType = "bomb"'>
+                            <div class="block-preview bomb"></div>
+                        </div>
+                    </div>
+                </div>
+                <InteractiveGameGrid 
+                    Snake="@snakeSegments"
+                    Apples="@apples"
+                    Portal="@portal"
+                    GroundBlocks="@groundBlocks"
+                    PushableBlocks="@pushableBlocks"
+                    Bombs="@bombs"
+                    OnCellClicked="@HandleCellClick" />
+            </div>
 
             <div class="button-group">
                 <button class="game-button" @onclick="PlayLevel">Play Level</button>
                 <button class="game-button" @onclick="ShareLevel">Share Level</button>
                 <button class="game-button" @onclick="SaveLevel">Save Level</button>
-                <button class="game-button secondary" @onclick="BackToMenu">Back to Menu</button>
             </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="error-message">
+                    @errorMessage
+                </div>
+            }
 
             @if (showSavePrompt)
             {
@@ -71,49 +105,7 @@
                     <p class="share-hint">Share this URL with others to let them play your level!</p>
                 </div>
             }
-
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="error-message">
-                    @errorMessage
-                </div>
-            }
         </div>
-        
-        <div class="level-preview">
-            <div class="editor-header">
-                <h3>Edit</h3>
-                <div class="block-type-selectors">
-                    <div class="block-selector @(selectedBlockType == "snake" ? "selected" : "")" @onclick='() => selectedBlockType = "snake"'>
-                        <div class="block-preview snake-head"></div>
-                    </div>
-                    <div class="block-selector @(selectedBlockType == "apple" ? "selected" : "")" @onclick='() => selectedBlockType = "apple"'>
-                        <div class="block-preview apple"></div>
-                    </div>
-                    <div class="block-selector @(selectedBlockType == "portal" ? "selected" : "")" @onclick='() => selectedBlockType = "portal"'>
-                        <div class="block-preview portal"></div>
-                    </div>
-                    <div class="block-selector @(selectedBlockType == "ground" ? "selected" : "")" @onclick='() => selectedBlockType = "ground"'>
-                        <div class="block-preview ground-block"></div>
-                    </div>
-                    <div class="block-selector @(selectedBlockType == "pushable" ? "selected" : "")" @onclick='() => selectedBlockType = "pushable"'>
-                        <div class="block-preview pushable-block"></div>
-                    </div>
-                    <div class="block-selector @(selectedBlockType == "bomb" ? "selected" : "")" @onclick='() => selectedBlockType = "bomb"'>
-                        <div class="block-preview bomb"></div>
-                    </div>
-                </div>
-            </div>
-            <InteractiveGameGrid 
-                Snake="@snakeSegments"
-                Apples="@apples"
-                Portal="@portal"
-                GroundBlocks="@groundBlocks"
-                PushableBlocks="@pushableBlocks"
-                Bombs="@bombs"
-                OnCellClicked="@HandleCellClick" />
-        </div>
-    </div>
     }
     else if (levelWon)
     {
@@ -122,7 +114,6 @@
             <p>You reached the portal!</p>
             <div class="completion-buttons">
                 <button class="game-button" @onclick="BackToEditor">Back to Editor</button>
-                <button class="game-button secondary" @onclick="BackToMenu">Main Menu</button>
             </div>
         </div>
     }
@@ -411,10 +402,6 @@
         showShareUrl = false;
     }
 
-    private void BackToMenu()
-    {
-        NavigationManager.NavigateTo("/snake");
-    }
 
     // Save/Load/Delete functionality
     private async Task LoadSavedLevelsFromStorage()
