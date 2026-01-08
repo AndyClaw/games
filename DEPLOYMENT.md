@@ -75,11 +75,24 @@ The GitHub Action will automatically build and deploy your changes!
 
 ### Routing doesn't work (404 on refresh)
 
-**Issue**: Single Page Application routing needs configuration.
+**Issue**: Single Page Application routing needs configuration. GitHub Pages serves static files and doesn't know about Blazor's client-side routes.
 
-**Solution**: The 404.html file is already set up. If you still have issues:
-- Make sure 404.html exists in your published wwwroot
-- Check that .nojekyll file is present
+**Solution**: This project includes a two-file SPA routing solution:
+- **404.html**: When GitHub Pages can't find a file (like `/snake/custom`), it serves this file
+  - Encodes the path and query string into URL parameters
+  - Redirects to index.html with encoded data
+- **index.html**: Has a script that runs before Blazor loads
+  - Decodes the path from URL parameters
+  - Restores the original URL using browser history API
+  - Blazor then handles the route normally
+
+This works for:
+- Direct navigation to `/snake/1`, `/snake/custom`, etc.
+- Custom levels with query strings like `/snake/custom?D=My+Level&E=10,10&S=...`
+- Browser refresh on any page
+- Deep linking and shared URLs
+
+**When you test locally**, this routing works differently because your dev server handles routes directly. The 404.html/index.html coordination is only needed for GitHub Pages.
 
 ### GitHub Action fails
 

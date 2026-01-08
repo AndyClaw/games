@@ -258,13 +258,20 @@ A classic snake game implemented in Blazor WebAssembly where the player controls
 - `/Services/SnakeGameEngine.cs` - Core game logic service (movement, collision, gravity, state management)
 - `/Models/Position.cs` - Position record with helper methods (Up, Down, Left, Right)
 - `/Models/LevelConfig.cs` - Shared level configuration model with parsing/serialization
-- `/Layout/NavMenu.razor` - Navigation with Snake Game submenu
-- `/wwwroot/css/app.css` - Global styles including shared block styles
-- `/wwwroot/index.html` - Main HTML with keyboard handler JavaScript
-- Navigation link in NavMenu with submenu for individual levels
+- `/Layout/NavMenu.razor` - Navigation menu with Snake Game and Custom Level links
+- `/wwwroot/css/app.css` - Global styles including shared block styles and button sizing
+- `/wwwroot/index.html` - Main HTML with keyboard handler JavaScript and GitHub Pages SPA routing script
+- `/wwwroot/404.html` - GitHub Pages 404 handler for client-side routing support
+
+## Deployment
+- **GitHub Pages Ready**: Includes SPA routing support via 404.html redirect handler
+- **Client-Side Routing**: Works with direct navigation, browser refresh, and deep links
+- **Static Hosting**: Fully static - no backend server required
+- **Responsive Design**: Game grid scales to fit viewport while maintaining aspect ratio (max 500px, min based on viewport)
 
 ## Version History
-- **v2.0** (Current): Visual level editor with block selector toolbar, click-to-place/remove blocks, local storage for saving/loading custom levels, navigation menu with level links, shared LevelConfig model, consistent green apples and darker purple portal across all components, 12 built-in levels
+- **v2.1** (Current): GitHub Pages SPA routing support (404.html + index.html script), responsive grid sizing (viewport-aware with 500px max), reduced button sizes for better mobile UX, simplified navigation menu
+- **v2.0**: Visual level editor with block selector toolbar, click-to-place/remove blocks, local storage for saving/loading custom levels, navigation menu with level links, shared LevelConfig model, consistent green apples and darker purple portal across all components, 12 built-in levels
 - **v1.5**: Added "Customize" button to edit preset levels, direct URL navigation to levels, animated gravity with 200ms delays, retry button, comprehensive game state management via SnakeGameEngine service
 - **v1.1**: Enhanced custom level validation - required fields (portal, snake, min 3 ground blocks), specific error messages per section, automatic filtering of empty position entries, bounds checking
 - **v1.0**: Added custom level creator with form inputs, URL-based level sharing, and auto-play from shared URLs; Updated compact format to use URL query string style (& delimiter, = for key-value pairs)
