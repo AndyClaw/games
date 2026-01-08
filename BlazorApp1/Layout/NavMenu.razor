@@ -1,4 +1,4 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">BlazorApp1</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
@@ -15,75 +15,25 @@
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <div class="nav-link" @onclick="ToggleSnakeSubmenu" @onclick:stopPropagation="true" style="cursor: pointer;">
+            <NavLink class="nav-link" href="snake">
                 <span class="bi bi-controller" aria-hidden="true"></span> Snake Game
-                <span class="@SnakeSubmenuIcon" style="float: right;"></span>
-            </div>
-            @if (showSnakeSubmenu)
-            {
-                <div class="submenu">
-                    <NavLink class="nav-link submenu-item" href="snake">
-                        All Levels
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/1">
-                        Level 1
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/2">
-                        Level 2
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/3">
-                        Level 3
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/4">
-                        Level 4
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/5">
-                        Level 5
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/6">
-                        Level 6
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/7">
-                        Level 7
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/8">
-                        Level 8
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/9">
-                        Level 9
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/10">
-                        Level 10
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/11">
-                        Level 11
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/12">
-                        Level 12
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="snake/custom">
-                        Custom
-                    </NavLink>
-                </div>
-            }
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="snake/custom">
+                <span class="bi bi-pencil-square" aria-hidden="true"></span> Snake Craft
+            </NavLink>
         </div>
     </nav>
 </div>
 
 @code {
     private bool collapseNavMenu = true;
-    private bool showSnakeSubmenu = false;
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-    private string SnakeSubmenuIcon => showSnakeSubmenu ? "bi bi-chevron-up" : "bi bi-chevron-down";
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
-    }
-
-    private void ToggleSnakeSubmenu()
-    {
-        showSnakeSubmenu = !showSnakeSubmenu;
     }
 }
