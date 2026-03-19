@@ -185,7 +185,7 @@
 
     private void GoToCustomLevel()
     {
-        NavigationManager.NavigateTo("/snake/custom");
+        NavigationManager.NavigateTo("snake/custom");
     }
 
     private void CustomizeCurrentLevel()
@@ -203,7 +203,7 @@
 
         // Navigate to custom level with current state as URL parameters
         var compactString = config.ToCompactString();
-        NavigationManager.NavigateTo($"/snake/custom?{compactString}");
+        NavigationManager.NavigateTo($"snake/custom?{compactString}");
     }
 
     private void InitializeGame(LevelConfig config)
