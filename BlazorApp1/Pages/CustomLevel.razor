@@ -348,7 +348,8 @@
             
             // Build share URL
             var baseUrl = NavigationManager.BaseUri;
-            shareUrl = $"{baseUrl}snake/custom?{compactString}";
+            // Ensure baseUrl ends with a slash and use absolute path for GitHub Pages
+            shareUrl = $"{baseUrl}/snake/custom?{compactString}";
             showShareUrl = true;
         }
         catch (Exception ex)
