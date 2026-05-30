@@ -1,0 +1,290 @@
+@page "/hexmehome"
+@using BlazorApp1.Models
+@using BlazorApp1.Services
+@inject HexMeHomeEngine Engine
+@implements IDisposable
+
+<PageTitle>Hex Me Home</PageTitle>
+
+<div class="hex-game-container">
+    <h2 class="game-title">Hex Me Home</h2>
+
+    @if (Engine.Grid != null)
+    {
+        <div class="game-status">
+            @if (Engine.Grid.IsSolved && !Engine.Grid.ShowingSolution)
+            {
+                <div class="win-message">🏠 You made it home! 🎉</div>
+            }
+            else if (Engine.Grid.ShowingSolution)
+            {
+                <div class="solution-message">Showing solution</div>
+            }
+        </div>
+
+        <div class="hex-grid" style="@GetGridStyle()">
+            @* Player marker at top *@
+            <div class="player-marker" style="@GetPlayerMarkerStyle()">
+                <svg viewBox="0 0 60 34" class="marker-svg">
+                    <polygon points="10,34 30,4 50,34" fill="#e63946" stroke="#333" stroke-width="2"/>
+                    <text x="30" y="28" text-anchor="middle" font-size="14" fill="white" font-weight="bold">P</text>
+                </svg>
+            </div>
+
+            @for (int row = 0; row < Engine.Grid.Rows; row++)
+            {
+                for (int col = 0; col < Engine.Grid.Columns; col++)
+                {
+                    var tile = Engine.Grid.Tiles[col, row];
+                    var c = col;
+                    var r = row;
+                    <div class="hex-cell @GetTileClasses(tile)"
+                         style="@GetTileStyle(col, row)"
+                         @onclick="() => OnTileClick(c, r)">
+                        @((MarkupString)RenderHexSvg(tile))
+                    </div>
+                }
+            }
+
+            @* Home marker at bottom *@
+            <div class="home-marker" style="@GetHomeMarkerStyle()">
+                <svg viewBox="0 0 60 34" class="marker-svg">
+                    <polygon points="10,0 30,30 50,0" fill="#e63946" stroke="#333" stroke-width="2"/>
+                    <text x="30" y="18" text-anchor="middle" font-size="14" fill="white" font-weight="bold">H</text>
+                </svg>
+            </div>
+        </div>
+
+        <div class="game-controls">
+            <button class="hex-btn" @onclick="OnReset">Reset</button>
+            <button class="hex-btn" @onclick="OnNewGame">New Game</button>
+            <button class="hex-btn" @onclick="OnShowSolution">Show Solution</button>
+        </div>
+
+        <div class="size-controls">
+            <span class="size-label">Grid:</span>
+            <button class="hex-btn size-btn @(currentSize == 4 ? "active" : "")" @onclick="() => ChangeSize(4)">4×4</button>
+            <button class="hex-btn size-btn @(currentSize == 6 ? "active" : "")" @onclick="() => ChangeSize(6)">6×6</button>
+            <button class="hex-btn size-btn @(currentSize == 8 ? "active" : "")" @onclick="() => ChangeSize(8)">8×8</button>
+        </div>
+    }
+</div>
+
+@code {
+    private int currentSize = 4;
+
+    // Pointy-top hex geometry.
+    // In the SVG viewBox (100x115.47), the hex has:
+    //   width = 100 (sqrt(3) * radius, where radius = 57.735)
+    //   height = 115.47 (2 * radius)
+    // For tessellation:
+    //   Horizontal center-to-center = hex width = 100% of display width
+    //   Vertical center-to-center = 3/4 * hex height
+    //   Odd rows shift right by 1/2 hex width
+
+    // Display size of each hex tile
+    private double TileDisplayWidth => GetTileSize();
+    private double TileDisplayHeight => GetTileSize() * 1.1547; // height/width ratio for pointy-top
+
+    // Tessellation spacing
+    private double ColSpacing => TileDisplayWidth;
+    private double RowSpacing => TileDisplayHeight * 0.75;
+    private double OddRowOffset => TileDisplayWidth * 0.5;
+
+    private double GetTileSize()
+    {
+        // Scale tiles based on grid size so they fill available space nicely
+        return currentSize switch
+        {
+            4 => 100,
+            6 => 72,
+            8 => 56,
+            _ => 80
+        };
+    }
+
+    protected override void OnInitialized()
+    {
+        Engine.OnStateChanged += HandleStateChanged;
+        Engine.NewGame(currentSize, currentSize);
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnTileClick(int col, int row)
+    {
+        Engine.RotateTile(col, row);
+    }
+
+    private void OnReset() => Engine.Reset();
+    private void OnNewGame() => Engine.NewGame(currentSize, currentSize);
+    private void OnShowSolution() => Engine.ShowSolution();
+
+    private void ChangeSize(int size)
+    {
+        currentSize = size;
+        Engine.NewGame(size, size);
+    }
+
+    private string GetGridStyle()
+    {
+        double width = (Engine.Grid.Columns - 1) * ColSpacing + TileDisplayWidth + OddRowOffset + 10;
+        double height = (Engine.Grid.Rows - 1) * RowSpacing + TileDisplayHeight + 70;
+        return $"width: {width:F0}px; height: {height:F0}px; position: relative;";
+    }
+
+    private string GetTileStyle(int col, int row)
+    {
+        double x = col * ColSpacing;
+        if (row % 2 == 1) x += OddRowOffset;
+        double y = row * RowSpacing + 35; // top margin for player marker
+        return $"left: {x:F1}px; top: {y:F1}px; width: {TileDisplayWidth:F1}px; height: {TileDisplayHeight:F1}px;";
+    }
+
+    private string GetPlayerMarkerStyle()
+    {
+        double markerW = 50;
+        double x = Engine.Grid.PlayerColumn * ColSpacing + (TileDisplayWidth - markerW) / 2;
+        // row 0 is even, no offset
+        double y = 0;
+        return $"left: {x:F1}px; top: {y:F1}px; position: absolute; width: {markerW}px; height: 34px; z-index: 5;";
+    }
+
+    private string GetHomeMarkerStyle()
+    {
+        double markerW = 50;
+        int lastRow = Engine.Grid.Rows - 1;
+        double x = Engine.Grid.HomeColumn * ColSpacing + (TileDisplayWidth - markerW) / 2;
+        if (lastRow % 2 == 1) x += OddRowOffset;
+        double y = lastRow * RowSpacing + 35 + TileDisplayHeight + 2;
+        return $"left: {x:F1}px; top: {y:F1}px; position: absolute; width: {markerW}px; height: 34px; z-index: 5;";
+    }
+
+    private string GetTileClasses(HexTile tile)
+    {
+        var classes = new List<string>();
+        if (tile.IsTraversed) classes.Add("traversed");
+        if (tile.IsSolutionTile && Engine.Grid.ShowingSolution) classes.Add("solution-highlight");
+        return string.Join(" ", classes);
+    }
+
+    /// <summary>
+    /// Render a hex tile SVG matching kirox style:
+    /// - Pointy-top hex filling the viewBox
+    /// - Thick paths with black border drawn first, white/colored fill on top
+    /// - All 3 black borders drawn first, then all 3 white fills (for proper overlap layering)
+    /// </summary>
+    private string RenderHexSvg(HexTile tile)
+    {
+        int rotDeg = tile.Rotation * 60;
+        var svg = new System.Text.StringBuilder();
+
+        // ViewBox sized to fit pointy-top hex: width=86.6, height=100, centered
+        svg.Append("<svg viewBox=\"-50 -57.735 100 115.47\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\">");
+        svg.Append($"<g transform=\"rotate({rotDeg})\">");
+
+        // Hex background fill - dark gray like kirox
+        svg.Append("<path d=\"M 0,-57.735 L 50,-28.8675 L 50,28.8675 L 0,57.735 L -50,28.8675 L -50,-28.8675 Z\" fill=\"#707070\" stroke=\"#555\" stroke-width=\"0.8\"/>");
+
+        // Draw each path as a complete unit (border + fill) in sequence.
+        // Later paths render ON TOP of earlier ones, creating bridge/overpass effect at crossings.
+        for (int i = 0; i < 3; i++)
+        {
+            var (sideA, sideB) = tile.Paths[i];
+            string pathD = GetArcPath(sideA, sideB);
+            bool isTraversed = tile.IsTraversed && tile.TraversedPathIndex == i;
+            string pathColor = isTraversed ? "#e63946" : "#ffffff";
+
+            svg.Append($"<path d=\"{pathD}\" fill=\"none\" stroke=\"#000000\" stroke-width=\"20\" stroke-linecap=\"butt\"/>");
+            svg.Append($"<path d=\"{pathD}\" fill=\"none\" stroke=\"{pathColor}\" stroke-width=\"14\" stroke-linecap=\"butt\"/>");
+        }
+
+        svg.Append("</g></svg>");
+        return svg.ToString();
+    }
+
+    /// <summary>
+    /// Generate SVG cubic bezier path connecting two side midpoints.
+    /// Control points are placed along the inward normal at each side midpoint,
+    /// ensuring the curve exits PERPENDICULAR to the hex edge for smooth connections.
+    /// </summary>
+    private string GetArcPath(int sideA, int sideB)
+    {
+        var midA = GetSideMidpoint(sideA);
+        var midB = GetSideMidpoint(sideB);
+        var normA = GetInwardNormal(sideA);
+        var normB = GetInwardNormal(sideB);
+
+        int diff = Math.Min(Math.Abs(sideA - sideB), 6 - Math.Abs(sideA - sideB));
+
+        if (diff == 3) // Opposite sides — straight line through center (already perpendicular)
+        {
+            return $"M {midA.x:F2},{midA.y:F2} L {midB.x:F2},{midB.y:F2}";
+        }
+
+        // Control point distance along inward normal
+        // Tuned for smooth curves that match kirox's visual style
+        double d = diff switch
+        {
+            1 => 22.0,  // adjacent sides: tight curve
+            2 => 42.0,  // two apart: medium curve
+            _ => 30.0
+        };
+
+        // Cubic bezier: start at midA, control points along inward normals, end at midB
+        double c1x = midA.x + normA.x * d;
+        double c1y = midA.y + normA.y * d;
+        double c2x = midB.x + normB.x * d;
+        double c2y = midB.y + normB.y * d;
+
+        return $"M {midA.x:F2},{midA.y:F2} C {c1x:F2},{c1y:F2} {c2x:F2},{c2y:F2} {midB.x:F2},{midB.y:F2}";
+    }
+
+    // Pointy-top hex vertices at radius 57.735 (so width = 100, height = 115.47)
+    // V0=top, V1=upper-right, V2=lower-right, V3=bottom, V4=lower-left, V5=upper-left
+    private static readonly (double x, double y)[] HexVertices = new[]
+    {
+        (0.0, -57.735),    // V0 top
+        (50.0, -28.8675),  // V1 upper-right
+        (50.0, 28.8675),   // V2 lower-right
+        (0.0, 57.735),     // V3 bottom
+        (-50.0, 28.8675),  // V4 lower-left
+        (-50.0, -28.8675)  // V5 upper-left
+    };
+
+    // Side midpoints (precomputed for convenience)
+    // Side 0: (25, -43.30), Side 1: (50, 0), Side 2: (25, 43.30)
+    // Side 3: (-25, 43.30), Side 4: (-50, 0), Side 5: (-25, -43.30)
+    private static readonly (double x, double y)[] SideMidpoints = new[]
+    {
+        (25.0, -43.30125),   // Side 0: midpoint of V0→V1
+        (50.0, 0.0),         // Side 1: midpoint of V1→V2
+        (25.0, 43.30125),    // Side 2: midpoint of V2→V3
+        (-25.0, 43.30125),   // Side 3: midpoint of V3→V4
+        (-50.0, 0.0),        // Side 4: midpoint of V4→V5
+        (-25.0, -43.30125)   // Side 5: midpoint of V5→V0
+    };
+
+    // Inward unit normals at each side midpoint (pointing toward hex center)
+    // These are simply -midpoint/|midpoint| since all midpoints are at distance 50 (inradius) from center
+    private static readonly (double x, double y)[] InwardNormals = new[]
+    {
+        (-0.5, 0.86603),     // Side 0 normal
+        (-1.0, 0.0),         // Side 1 normal
+        (-0.5, -0.86603),    // Side 2 normal
+        (0.5, -0.86603),     // Side 3 normal
+        (1.0, 0.0),          // Side 4 normal
+        (0.5, 0.86603)       // Side 5 normal
+    };
+
+    private (double x, double y) GetSideMidpoint(int side) => SideMidpoints[side];
+    private (double x, double y) GetInwardNormal(int side) => InwardNormals[side];
+
+    public void Dispose()
+    {
+        Engine.OnStateChanged -= HandleStateChanged;
+    }
+}

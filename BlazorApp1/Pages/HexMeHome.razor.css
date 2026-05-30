@@ -1,0 +1,122 @@
+.hex-game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.game-title {
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 1.8rem;
+}
+
+.game-status {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.win-message {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #2d6a4f;
+    background: #d8f3dc;
+    padding: 8px 20px;
+    border-radius: 8px;
+    animation: pulse 0.5s ease-in-out;
+}
+
+.solution-message {
+    font-size: 1.1rem;
+    color: #6c757d;
+    font-style: italic;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.hex-grid {
+    margin: 10px auto;
+    position: relative;
+}
+
+.hex-cell {
+    position: absolute;
+    cursor: pointer;
+    overflow: visible;
+}
+
+.hex-cell:hover {
+    z-index: 10;
+    filter: brightness(1.1);
+}
+
+.hex-cell.solution-highlight {
+    filter: drop-shadow(0 0 8px #e63946) drop-shadow(0 0 16px #e63946);
+    z-index: 5;
+}
+
+.hex-cell svg {
+    display: block;
+    overflow: visible;
+}
+
+.player-marker, .home-marker {
+    z-index: 20;
+}
+
+.marker-svg {
+    display: block;
+}
+
+.game-controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.size-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    align-items: center;
+}
+
+.size-label {
+    font-weight: 600;
+    color: #555;
+    margin-right: 4px;
+}
+
+.hex-btn {
+    padding: 8px 18px;
+    border: 2px solid #333;
+    border-radius: 6px;
+    background: #f8f9fa;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.hex-btn:hover {
+    background: #333;
+    color: #fff;
+}
+
+.hex-btn.active {
+    background: #333;
+    color: #fff;
+}
+
+.hex-btn.size-btn {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+}
