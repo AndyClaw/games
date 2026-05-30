@@ -141,7 +141,7 @@
         double x = col * ColSpacing;
         if (row % 2 == 1) x += OddRowOffset;
         double y = row * RowSpacing + 35; // top margin for player marker
-        return $"left: {x:F1}px; top: {y:F1}px; width: {TileDisplayWidth:F1}px; height: {TileDisplayHeight:F1}px;";
+        return $"position: absolute; left: {x:F1}px; top: {y:F1}px; width: {TileDisplayWidth:F1}px; height: {TileDisplayHeight:F1}px;";
     }
 
     private string GetPlayerMarkerStyle()
