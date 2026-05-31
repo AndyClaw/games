@@ -68,8 +68,14 @@
     overflow: visible;
 }
 
-.player-marker, .home-marker {
+.player-marker, .home-marker, .marker-connector {
     z-index: 20;
+    pointer-events: none;
+}
+
+.connector-stub {
+    z-index: 15;
+    pointer-events: none;
 }
 
 .marker-svg {

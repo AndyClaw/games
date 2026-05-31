@@ -23,12 +23,9 @@
         </div>
 
         <div class="hex-grid" style="@GetGridStyle()">
-            @* Player marker at top *@
-            <div class="player-marker" style="@GetPlayerMarkerStyle()">
-                <svg viewBox="0 0 60 34" class="marker-svg">
-                    <polygon points="10,34 30,4 50,34" fill="#e63946" stroke="#333" stroke-width="2"/>
-                    <text x="30" y="28" text-anchor="middle" font-size="14" fill="white" font-weight="bold">P</text>
-                </svg>
+            @* Player marker with path connector showing exact entry edge *@
+            <div class="marker-connector" style="@GetPlayerConnectorStyle()">
+                @((MarkupString)RenderPlayerConnector())
             </div>
 
             @for (int row = 0; row < Engine.Grid.Rows; row++)
@@ -46,12 +43,9 @@
                 }
             }
 
-            @* Home marker at bottom *@
-            <div class="home-marker" style="@GetHomeMarkerStyle()">
-                <svg viewBox="0 0 60 34" class="marker-svg">
-                    <polygon points="10,0 30,30 50,0" fill="#e63946" stroke="#333" stroke-width="2"/>
-                    <text x="30" y="18" text-anchor="middle" font-size="14" fill="white" font-weight="bold">H</text>
-                </svg>
+            @* Home marker with path connector showing exact exit edge *@
+            <div class="marker-connector" style="@GetHomeConnectorStyle()">
+                @((MarkupString)RenderHomeConnector())
             </div>
         </div>
 
@@ -132,7 +126,7 @@
     private string GetGridStyle()
     {
         double width = (Engine.Grid.Columns - 1) * ColSpacing + TileDisplayWidth + OddRowOffset + 10;
-        double height = (Engine.Grid.Rows - 1) * RowSpacing + TileDisplayHeight + 70;
+        double height = (Engine.Grid.Rows - 1) * RowSpacing + TileDisplayHeight + 120; // extra for markers
         return $"width: {width:F0}px; height: {height:F0}px; position: relative;";
     }
 
@@ -144,23 +138,66 @@
         return $"position: absolute; left: {x:F1}px; top: {y:F1}px; width: {TileDisplayWidth:F1}px; height: {TileDisplayHeight:F1}px;";
     }
 
-    private string GetPlayerMarkerStyle()
+    private string GetPlayerConnectorStyle()
     {
-        double markerW = 50;
-        double x = Engine.Grid.PlayerColumn * ColSpacing + (TileDisplayWidth - markerW) / 2;
-        // row 0 is even, no offset
-        double y = 0;
-        return $"left: {x:F1}px; top: {y:F1}px; position: absolute; width: {markerW}px; height: 34px; z-index: 5;";
+        // Position the connector SVG so it covers the area above the entry edge
+        double tileX = Engine.Grid.PlayerColumn * ColSpacing;
+        double tileCenterX = tileX + TileDisplayWidth / 2;
+        double tileCenterY = 35 + TileDisplayHeight / 2;
+
+        // Side 5 midpoint in display coords
+        double sideRelX = -25.0 / 100.0 * TileDisplayWidth;
+        double sideRelY = -43.3 / 115.47 * TileDisplayHeight;
+        double edgeX = tileCenterX + sideRelX;
+        double edgeY = tileCenterY + sideRelY;
+
+        // SVG box extends above the edge point
+        double svgW = 60;
+        double svgH = 70;
+        return $"position: absolute; left: {edgeX - svgW / 2:F1}px; top: {edgeY - svgH + 5:F1}px; width: {svgW}px; height: {svgH}px; z-index: 20; pointer-events: none;";
     }
 
-    private string GetHomeMarkerStyle()
+    private string RenderPlayerConnector()
     {
-        double markerW = 50;
+        // SVG showing: person icon at top, thick red path curving down to bottom center (the edge point)
+        return @"<svg viewBox=""0 0 60 70"" width=""100%"" height=""100%"" xmlns=""http://www.w3.org/2000/svg"">
+            <path d=""M 30,10 C 30,40 30,50 30,65"" stroke=""#000"" stroke-width=""12"" stroke-linecap=""round"" fill=""none""/>
+            <path d=""M 30,10 C 30,40 30,50 30,65"" stroke=""#e63946"" stroke-width=""8"" stroke-linecap=""round"" fill=""none""/>
+            <circle cx=""30"" cy=""10"" r=""8"" fill=""#e63946"" stroke=""#222"" stroke-width=""1.5""/>
+            <path d=""M22,8 L30,2 L38,8"" fill=""none"" stroke=""#222"" stroke-width=""1.5"" stroke-linecap=""round""/>
+        </svg>";
+    }
+
+    private string GetHomeConnectorStyle()
+    {
         int lastRow = Engine.Grid.Rows - 1;
-        double x = Engine.Grid.HomeColumn * ColSpacing + (TileDisplayWidth - markerW) / 2;
-        if (lastRow % 2 == 1) x += OddRowOffset;
-        double y = lastRow * RowSpacing + 35 + TileDisplayHeight + 2;
-        return $"left: {x:F1}px; top: {y:F1}px; position: absolute; width: {markerW}px; height: 34px; z-index: 5;";
+        double tileX = Engine.Grid.HomeColumn * ColSpacing;
+        if (lastRow % 2 == 1) tileX += OddRowOffset;
+        double tileCenterX = tileX + TileDisplayWidth / 2;
+        double tileCenterY = lastRow * RowSpacing + 35 + TileDisplayHeight / 2;
+
+        // Side 3 midpoint in display coords
+        double sideRelX = -25.0 / 100.0 * TileDisplayWidth;
+        double sideRelY = 43.3 / 115.47 * TileDisplayHeight;
+        double edgeX = tileCenterX + sideRelX;
+        double edgeY = tileCenterY + sideRelY;
+
+        // SVG box extends below the edge point
+        double svgW = 60;
+        double svgH = 70;
+        return $"position: absolute; left: {edgeX - svgW / 2:F1}px; top: {edgeY - 5:F1}px; width: {svgW}px; height: {svgH}px; z-index: 20; pointer-events: none;";
+    }
+
+    private string RenderHomeConnector()
+    {
+        // SVG showing: thick red path from top (edge point) curving down to house icon
+        return @"<svg viewBox=""0 0 60 70"" width=""100%"" height=""100%"" xmlns=""http://www.w3.org/2000/svg"">
+            <path d=""M 30,5 C 30,20 30,35 30,45"" stroke=""#000"" stroke-width=""12"" stroke-linecap=""round"" fill=""none""/>
+            <path d=""M 30,5 C 30,20 30,35 30,45"" stroke=""#e63946"" stroke-width=""8"" stroke-linecap=""round"" fill=""none""/>
+            <path d=""M30,42 L44,54 L44,66 L16,66 L16,54 Z"" fill=""#e63946"" stroke=""#222"" stroke-width=""1.5""/>
+            <path d=""M30,42 L44,54 L16,54 Z"" fill=""#c1121f"" stroke=""#222"" stroke-width=""1.5""/>
+            <rect x=""25"" y=""56"" width=""10"" height=""10"" fill=""#fff"" stroke=""#222"" stroke-width=""1""/>
+        </svg>";
     }
 
     private string GetTileClasses(HexTile tile)
@@ -202,7 +239,23 @@
             svg.Append($"<path d=\"{pathD}\" fill=\"none\" stroke=\"{pathColor}\" stroke-width=\"14\" stroke-linecap=\"butt\"/>");
         }
 
-        svg.Append("</g></svg>");
+        svg.Append("</g>");
+
+        // Draw entry/exit markers on the hex edge (NOT rotated, in absolute position)
+        // Player entry: red circle on side 5 of the player column, row 0
+        if (tile.Row == 0 && tile.Col == Engine.Grid.PlayerColumn)
+        {
+            var mid = GetSideMidpoint(Engine.Grid.PlayerEntrySide);
+            svg.Append($"<circle cx=\"{mid.x:F1}\" cy=\"{mid.y:F1}\" r=\"8\" fill=\"#e63946\" stroke=\"#000\" stroke-width=\"2\"/>");
+        }
+        // Home exit: red circle on side 3 of the home column, last row
+        if (tile.Row == Engine.Grid.Rows - 1 && tile.Col == Engine.Grid.HomeColumn)
+        {
+            var mid = GetSideMidpoint(Engine.Grid.HomeExitSide);
+            svg.Append($"<circle cx=\"{mid.x:F1}\" cy=\"{mid.y:F1}\" r=\"8\" fill=\"#e63946\" stroke=\"#000\" stroke-width=\"2\"/>");
+        }
+
+        svg.Append("</svg>");
         return svg.ToString();
     }
 
