@@ -232,7 +232,7 @@
         {
             var (sideA, sideB) = tile.Paths[i];
             string pathD = GetArcPath(sideA, sideB);
-            bool isTraversed = tile.IsTraversed && tile.TraversedPathIndex == i;
+            bool isTraversed = tile.IsTraversed && tile.TraversedPathIndices.Contains(i);
             string pathColor = isTraversed ? "#e63946" : "#ffffff";
 
             svg.Append($"<path d=\"{pathD}\" fill=\"none\" stroke=\"#000000\" stroke-width=\"20\" stroke-linecap=\"butt\"/>");

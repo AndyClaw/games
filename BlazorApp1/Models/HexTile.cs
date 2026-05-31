@@ -39,9 +39,15 @@ public class HexTile
     public bool IsTraversed { get; set; }
 
     /// <summary>
-    /// Which path index (0-2) is traversed, or -1 if none.
+    /// Which path indices (0-2) are traversed. A tile can be traversed multiple times
+    /// using different paths (overpass/bridge crossings).
     /// </summary>
-    public int TraversedPathIndex { get; set; } = -1;
+    public HashSet<int> TraversedPathIndices { get; set; } = new();
+
+    /// <summary>
+    /// Legacy single-path accessor for rendering compatibility.
+    /// </summary>
+    public int TraversedPathIndex => TraversedPathIndices.Count > 0 ? TraversedPathIndices.First() : -1;
 
     /// <summary>
     /// Get the effective side connections after rotation.

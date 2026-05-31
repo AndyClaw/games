@@ -345,6 +345,7 @@ public class HexMeHomeEngine
     /// <summary>
     /// Traverse the path from player entry and mark traversed tiles/paths.
     /// Sets IsSolved if path reaches home.
+    /// A tile can be visited multiple times using different paths (overpass crossings).
     /// </summary>
     public void CheckWin()
     {
@@ -353,14 +354,14 @@ public class HexMeHomeEngine
         for (int r = 0; r < Grid.Rows; r++)
         {
             Grid.Tiles[c, r].IsTraversed = false;
-            Grid.Tiles[c, r].TraversedPathIndex = -1;
+            Grid.Tiles[c, r].TraversedPathIndices.Clear();
         }
 
         int currentCol = Grid.PlayerColumn;
         int currentRow = 0;
         int entrySide = Grid.PlayerEntrySide;
-        var visited = new HashSet<(int, int)>();
-        int maxSteps = Grid.Columns * Grid.Rows;
+        var visited = new HashSet<(int, int, int)>(); // (col, row, pathIndex)
+        int maxSteps = Grid.Columns * Grid.Rows * 3; // max = every path on every tile
 
         for (int step = 0; step < maxSteps; step++)
         {
@@ -371,15 +372,23 @@ public class HexMeHomeEngine
                 return;
             }
 
-            if (visited.Contains((currentCol, currentRow)))
+            var tile = Grid.Tiles[currentCol, currentRow];
+            int pathIndex = tile.GetPathIndexForSide(entrySide);
+            if (pathIndex == -1)
             {
                 Grid.IsSolved = false;
                 return;
             }
 
-            visited.Add((currentCol, currentRow));
+            // Check if we've already used this specific path on this tile (loop detection)
+            if (visited.Contains((currentCol, currentRow, pathIndex)))
+            {
+                Grid.IsSolved = false;
+                return;
+            }
 
-            var tile = Grid.Tiles[currentCol, currentRow];
+            visited.Add((currentCol, currentRow, pathIndex));
+
             int exitSide = tile.GetExitSide(entrySide);
             if (exitSide == -1)
             {
@@ -387,9 +396,9 @@ public class HexMeHomeEngine
                 return;
             }
 
-            // Mark this tile as traversed
+            // Mark this tile and path as traversed
             tile.IsTraversed = true;
-            tile.TraversedPathIndex = tile.GetPathIndexForSide(entrySide);
+            tile.TraversedPathIndices.Add(pathIndex);
 
             // Check if we reached home
             if (currentRow == Grid.Rows - 1 && currentCol == Grid.HomeColumn && exitSide == Grid.HomeExitSide)
