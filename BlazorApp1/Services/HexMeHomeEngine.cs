@@ -8,19 +8,24 @@ namespace BlazorApp1.Services;
 public class HexMeHomeEngine
 {
     private static readonly Random _rng = new();
+    private static readonly string[] PlayerColors = { "#e63946", "#2d6a4f", "#1d3557" };
 
     public HexGrid Grid { get; private set; } = null!;
 
     /// <summary>
+    /// Number of players for the current game.
+    /// </summary>
+    public int PlayerCount { get; private set; } = 1;
+
+    /// <summary>
     /// Stored initial scramble state for reset.
-    /// Key: (col, row), Value: rotation at start of level.
     /// </summary>
     private Dictionary<(int, int), int> _initialRotations = new();
 
     public event Action? OnStateChanged;
 
     /// <summary>
-    /// Generate a new game with the given grid size.
+    /// Generate a new game with the given grid size and current player count.
     /// </summary>
     public void NewGame(int columns, int rows)
     {
@@ -31,7 +36,6 @@ public class HexMeHomeEngine
             Tiles = new HexTile[columns, rows]
         };
 
-        // Initialize all tiles
         for (int c = 0; c < columns; c++)
         for (int r = 0; r < rows; r++)
         {
@@ -42,9 +46,29 @@ public class HexMeHomeEngine
         OnStateChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Add a player (up to 3) and regenerate the level.
+    /// </summary>
+    public void AddPlayer(int currentGridSize)
+    {
+        if (PlayerCount >= 3) return;
+        PlayerCount++;
+        NewGame(currentGridSize, currentGridSize);
+    }
+
+    /// <summary>
+    /// Remove a player (minimum 1) and regenerate.
+    /// </summary>
+    public void RemovePlayer(int currentGridSize)
+    {
+        if (PlayerCount <= 1) return;
+        PlayerCount--;
+        NewGame(currentGridSize, currentGridSize);
+    }
+
     private void GenerateLevel()
     {
-        int maxAttempts = 100;
+        int maxAttempts = 200;
         for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
             if (TryGenerateLevel())
@@ -53,7 +77,7 @@ public class HexMeHomeEngine
                 return;
             }
         }
-        // Fallback: just generate random tiles with no guaranteed solution
+        // Fallback
         GenerateRandomTilesOnly();
         StoreInitialState();
     }
@@ -63,36 +87,65 @@ public class HexMeHomeEngine
         int cols = Grid.Columns;
         int rows = Grid.Rows;
 
-        // 1. Place player (top) and home (bottom)
-        Grid.PlayerColumn = _rng.Next(cols);
-        Grid.HomeColumn = _rng.Next(cols);
-
-        // Player enters from top. For pointy-top hexes, top-facing sides are 0 (top-right) and 5 (top-left).
-        // We'll use side 5 so the path enters from upper-left of the tile.
-        Grid.PlayerEntrySide = 5;
-
-        // Home exits from bottom. Bottom-facing sides are 2 (bottom-right) and 3 (bottom-left).
-        Grid.HomeExitSide = 3;
-
-        // 2. Find a solution path via random walk
-        var solutionPath = FindRandomPath();
-        if (solutionPath == null) return false;
-
-        // 3. Assign paths to solution tiles
-        var solutionTileSet = new HashSet<(int, int)>();
-        for (int i = 0; i < solutionPath.Count; i++)
+        // Clear any prior state
+        for (int c = 0; c < cols; c++)
+        for (int r = 0; r < rows; r++)
         {
-            var (col, row, entrySide, exitSide) = solutionPath[i];
-            solutionTileSet.Add((col, row));
-            var tile = Grid.Tiles[col, row];
-            tile.IsSolutionTile = true;
-
-            // First path is the solution connection (in base rotation, so sides are as-is)
-            // We'll build paths in base rotation (rotation=0), then set solution rotation=0
-            AssignTilePaths(tile, entrySide, exitSide);
+            Grid.Tiles[c, r].IsSolutionTile = false;
         }
 
-        // 4. Assign paths to non-solution tiles
+        // Generate endpoints - each player gets a unique column for start and end
+        Grid.Endpoints.Clear();
+        var usedTopCols = new HashSet<int>();
+        var usedBottomCols = new HashSet<int>();
+
+        for (int p = 0; p < PlayerCount; p++)
+        {
+            int playerCol, homeCol;
+            // Pick unique columns
+            do { playerCol = _rng.Next(cols); } while (usedTopCols.Contains(playerCol));
+            do { homeCol = _rng.Next(cols); } while (usedBottomCols.Contains(homeCol));
+            usedTopCols.Add(playerCol);
+            usedBottomCols.Add(homeCol);
+
+            Grid.Endpoints.Add(new PlayerEndpoint
+            {
+                PlayerColumn = playerCol,
+                PlayerEntrySide = 5,
+                HomeColumn = homeCol,
+                HomeExitSide = 3,
+                Color = PlayerColors[p]
+            });
+        }
+
+        // Generate solution paths for each endpoint
+        var allSolutionPaths = new List<List<(int Col, int Row, int EntrySide, int ExitSide)>>();
+        var solutionTileSet = new HashSet<(int, int)>();
+
+        for (int p = 0; p < PlayerCount; p++)
+        {
+            var endpoint = Grid.Endpoints[p];
+            var path = FindRandomPath(endpoint, solutionTileSet);
+            if (path == null) return false;
+            allSolutionPaths.Add(path);
+
+            foreach (var (col, row, _, _) in path)
+                solutionTileSet.Add((col, row));
+        }
+
+        // Assign paths to solution tiles
+        foreach (var solutionPath in allSolutionPaths)
+        {
+            for (int i = 0; i < solutionPath.Count; i++)
+            {
+                var (col, row, entrySide, exitSide) = solutionPath[i];
+                var tile = Grid.Tiles[col, row];
+                tile.IsSolutionTile = true;
+                AssignTilePaths(tile, entrySide, exitSide);
+            }
+        }
+
+        // Assign paths to non-solution tiles
         for (int c = 0; c < cols; c++)
         for (int r = 0; r < rows; r++)
         {
@@ -102,19 +155,23 @@ public class HexMeHomeEngine
             }
         }
 
-        // 5. Store solution rotations (all at 0 since we built paths in correct orientation)
+        // Store solution rotations
         for (int c = 0; c < cols; c++)
         for (int r = 0; r < rows; r++)
         {
             Grid.Tiles[c, r].SolutionRotation = 0;
         }
 
-        // 6. Scramble
-        foreach (var (col, row, _, _) in solutionPath)
+        // Scramble solution tiles
+        foreach (var solutionPath in allSolutionPaths)
         {
-            int rotations = _rng.Next(1, 6); // 1-5, never 0
-            Grid.Tiles[col, row].Rotation = rotations;
+            foreach (var (col, row, _, _) in solutionPath)
+            {
+                int rotations = _rng.Next(1, 6);
+                Grid.Tiles[col, row].Rotation = rotations;
+            }
         }
+        // Scramble non-solution tiles
         for (int c = 0; c < cols; c++)
         for (int r = 0; r < rows; r++)
         {
@@ -126,22 +183,22 @@ public class HexMeHomeEngine
 
         Grid.IsSolved = false;
         Grid.ShowingSolution = false;
-        CheckWin(); // Sets traversal highlights
+        CheckWin();
         return true;
     }
 
     /// <summary>
-    /// Attempts to find a random path from player entry to home exit.
-    /// Returns list of (col, row, entrySide, exitSide) for each tile on the path.
+    /// Find a random path for a specific endpoint, avoiding tiles already used by other solutions.
     /// </summary>
-    private List<(int Col, int Row, int EntrySide, int ExitSide)>? FindRandomPath()
+    private List<(int Col, int Row, int EntrySide, int ExitSide)>? FindRandomPath(
+        PlayerEndpoint endpoint, HashSet<(int, int)> reservedTiles)
     {
         var path = new List<(int Col, int Row, int EntrySide, int ExitSide)>();
-        var visited = new HashSet<(int, int)>();
+        var visited = new HashSet<(int, int)>(reservedTiles);
 
-        int currentCol = Grid.PlayerColumn;
+        int currentCol = endpoint.PlayerColumn;
         int currentRow = 0;
-        int entrySide = Grid.PlayerEntrySide;
+        int entrySide = endpoint.PlayerEntrySide;
 
         int maxSteps = Grid.Columns * Grid.Rows;
 
@@ -156,26 +213,24 @@ public class HexMeHomeEngine
 
             visited.Add((currentCol, currentRow));
 
-            // Check if we can exit to home from this tile
-            if (currentRow == Grid.Rows - 1 && currentCol == Grid.HomeColumn)
+            // Check if we can exit to home
+            if (currentRow == Grid.Rows - 1 && currentCol == endpoint.HomeColumn)
             {
-                // Can we exit through the home side?
-                int homeExitSide = Grid.HomeExitSide;
-                if (homeExitSide != entrySide) // Don't go back the way we came
+                int homeExitSide = endpoint.HomeExitSide;
+                if (homeExitSide != entrySide)
                 {
                     path.Add((currentCol, currentRow, entrySide, homeExitSide));
                     return path;
                 }
             }
 
-            // Choose a random exit side (not the entry side)
-            var possibleExits = GetValidExitSides(currentCol, currentRow, entrySide, visited);
+            // Choose a random exit side
+            var possibleExits = GetValidExitSides(currentCol, currentRow, entrySide, visited, endpoint);
 
-            // Also allow home exit if we're on the home tile
-            if (currentRow == Grid.Rows - 1 && currentCol == Grid.HomeColumn)
+            if (currentRow == Grid.Rows - 1 && currentCol == endpoint.HomeColumn)
             {
-                if (!possibleExits.Contains(Grid.HomeExitSide) && Grid.HomeExitSide != entrySide)
-                    possibleExits.Add(Grid.HomeExitSide);
+                if (!possibleExits.Contains(endpoint.HomeExitSide) && endpoint.HomeExitSide != entrySide)
+                    possibleExits.Add(endpoint.HomeExitSide);
             }
 
             if (possibleExits.Count == 0)
@@ -184,16 +239,12 @@ public class HexMeHomeEngine
             int exitSide = possibleExits[_rng.Next(possibleExits.Count)];
             path.Add((currentCol, currentRow, entrySide, exitSide));
 
-            // Move to next tile
-            var (nextCol, nextRow) = GetNeighbor(currentCol, currentRow, exitSide);
-            entrySide = (exitSide + 3) % 6; // Complementary side
-
             // Check if we just exited to home
-            if (currentRow == Grid.Rows - 1 && currentCol == Grid.HomeColumn && exitSide == Grid.HomeExitSide)
-            {
+            if (currentRow == Grid.Rows - 1 && currentCol == endpoint.HomeColumn && exitSide == endpoint.HomeExitSide)
                 return path;
-            }
 
+            var (nextCol, nextRow) = GetNeighbor(currentCol, currentRow, exitSide);
+            entrySide = (exitSide + 3) % 6;
             currentCol = nextCol;
             currentRow = nextRow;
         }
@@ -201,7 +252,8 @@ public class HexMeHomeEngine
         return null;
     }
 
-    private List<int> GetValidExitSides(int col, int row, int entrySide, HashSet<(int, int)> visited)
+    private List<int> GetValidExitSides(int col, int row, int entrySide,
+        HashSet<(int, int)> visited, PlayerEndpoint endpoint)
     {
         var valid = new List<int>();
         for (int side = 0; side < 6; side++)
@@ -209,14 +261,12 @@ public class HexMeHomeEngine
             if (side == entrySide) continue;
             var (nCol, nRow) = GetNeighbor(col, row, side);
 
-            // Allow exit to home
-            if (row == Grid.Rows - 1 && col == Grid.HomeColumn && side == Grid.HomeExitSide)
+            if (row == Grid.Rows - 1 && col == endpoint.HomeColumn && side == endpoint.HomeExitSide)
             {
                 valid.Add(side);
                 continue;
             }
 
-            // Must lead to a valid unvisited tile
             if (nCol >= 0 && nCol < Grid.Columns && nRow >= 0 && nRow < Grid.Rows && !visited.Contains((nCol, nRow)))
             {
                 valid.Add(side);
@@ -227,8 +277,6 @@ public class HexMeHomeEngine
 
     /// <summary>
     /// Get the neighbor tile coordinates when exiting through a given side.
-    /// Uses pointy-top hexagons with odd-row offset (odd rows shifted right).
-    /// Side numbering: 0=top-right, 1=right, 2=bottom-right, 3=bottom-left, 4=left, 5=top-left
     /// </summary>
     public static (int Col, int Row) GetNeighbor(int col, int row, int exitSide)
     {
@@ -236,24 +284,20 @@ public class HexMeHomeEngine
 
         return exitSide switch
         {
-            0 => isOddRow ? (col + 1, row - 1) : (col, row - 1),     // top-right
-            1 => (col + 1, row),                                       // right
-            2 => isOddRow ? (col + 1, row + 1) : (col, row + 1),     // bottom-right
-            3 => isOddRow ? (col, row + 1) : (col - 1, row + 1),     // bottom-left
-            4 => (col - 1, row),                                       // left
-            5 => isOddRow ? (col, row - 1) : (col - 1, row - 1),     // top-left
+            0 => isOddRow ? (col + 1, row - 1) : (col, row - 1),
+            1 => (col + 1, row),
+            2 => isOddRow ? (col + 1, row + 1) : (col, row + 1),
+            3 => isOddRow ? (col, row + 1) : (col - 1, row + 1),
+            4 => (col - 1, row),
+            5 => isOddRow ? (col, row - 1) : (col - 1, row - 1),
             _ => (-1, -1)
         };
     }
 
-    /// <summary>
-    /// Assign paths to a solution tile given the required entry-exit connection.
-    /// </summary>
     private void AssignTilePaths(HexTile tile, int entrySide, int exitSide)
     {
         tile.Paths[0] = (entrySide, exitSide);
 
-        // Remaining 4 sides need to be paired into 2 paths
         var remaining = new List<int>();
         for (int s = 0; s < 6; s++)
         {
@@ -261,15 +305,11 @@ public class HexMeHomeEngine
                 remaining.Add(s);
         }
 
-        // Shuffle and pair
         Shuffle(remaining);
         tile.Paths[1] = (remaining[0], remaining[1]);
         tile.Paths[2] = (remaining[2], remaining[3]);
     }
 
-    /// <summary>
-    /// Assign completely random paths to a tile.
-    /// </summary>
     private void AssignRandomPaths(HexTile tile)
     {
         var sides = new List<int> { 0, 1, 2, 3, 4, 5 };
@@ -281,6 +321,13 @@ public class HexMeHomeEngine
 
     private void GenerateRandomTilesOnly()
     {
+        Grid.Endpoints.Clear();
+        Grid.Endpoints.Add(new PlayerEndpoint
+        {
+            PlayerColumn = _rng.Next(Grid.Columns),
+            HomeColumn = _rng.Next(Grid.Columns),
+            Color = PlayerColors[0]
+        });
         for (int c = 0; c < Grid.Columns; c++)
         for (int r = 0; r < Grid.Rows; r++)
         {
@@ -299,21 +346,14 @@ public class HexMeHomeEngine
         }
     }
 
-    /// <summary>
-    /// Rotate a tile and recheck win condition.
-    /// </summary>
     public void RotateTile(int col, int row)
     {
         if (Grid.IsSolved || Grid.ShowingSolution) return;
-
         Grid.Tiles[col, row].Rotate();
         CheckWin();
         OnStateChanged?.Invoke();
     }
 
-    /// <summary>
-    /// Reset all tiles to initial scrambled state.
-    /// </summary>
     public void Reset()
     {
         Grid.ShowingSolution = false;
@@ -327,9 +367,6 @@ public class HexMeHomeEngine
         OnStateChanged?.Invoke();
     }
 
-    /// <summary>
-    /// Show the solution by snapping all tiles to solution rotation.
-    /// </summary>
     public void ShowSolution()
     {
         Grid.ShowingSolution = true;
@@ -343,9 +380,8 @@ public class HexMeHomeEngine
     }
 
     /// <summary>
-    /// Traverse the path from player entry and mark traversed tiles/paths.
-    /// Sets IsSolved if path reaches home.
-    /// A tile can be visited multiple times using different paths (overpass crossings).
+    /// Check all player paths. All must connect for a win.
+    /// Each player's traversal is tracked with their color.
     /// </summary>
     public void CheckWin()
     {
@@ -354,67 +390,64 @@ public class HexMeHomeEngine
         for (int r = 0; r < Grid.Rows; r++)
         {
             Grid.Tiles[c, r].IsTraversed = false;
-            Grid.Tiles[c, r].TraversedPathIndices.Clear();
+            Grid.Tiles[c, r].TraversedPaths.Clear();
         }
 
-        int currentCol = Grid.PlayerColumn;
+        bool allSolved = true;
+
+        foreach (var endpoint in Grid.Endpoints)
+        {
+            endpoint.IsSolved = TraversePath(endpoint);
+            if (!endpoint.IsSolved) allSolved = false;
+        }
+
+        Grid.IsSolved = allSolved;
+    }
+
+    /// <summary>
+    /// Traverse a single player's path and mark tiles with their color.
+    /// </summary>
+    private bool TraversePath(PlayerEndpoint endpoint)
+    {
+        int currentCol = endpoint.PlayerColumn;
         int currentRow = 0;
-        int entrySide = Grid.PlayerEntrySide;
-        var visited = new HashSet<(int, int, int)>(); // (col, row, pathIndex)
-        int maxSteps = Grid.Columns * Grid.Rows * 3; // max = every path on every tile
+        int entrySide = endpoint.PlayerEntrySide;
+        var visited = new HashSet<(int, int, int)>();
+        int maxSteps = Grid.Columns * Grid.Rows * 3;
 
         for (int step = 0; step < maxSteps; step++)
         {
             if (currentCol < 0 || currentCol >= Grid.Columns ||
                 currentRow < 0 || currentRow >= Grid.Rows)
-            {
-                Grid.IsSolved = false;
-                return;
-            }
+                return false;
 
             var tile = Grid.Tiles[currentCol, currentRow];
             int pathIndex = tile.GetPathIndexForSide(entrySide);
-            if (pathIndex == -1)
-            {
-                Grid.IsSolved = false;
-                return;
-            }
+            if (pathIndex == -1) return false;
 
-            // Check if we've already used this specific path on this tile (loop detection)
             if (visited.Contains((currentCol, currentRow, pathIndex)))
-            {
-                Grid.IsSolved = false;
-                return;
-            }
+                return false;
 
             visited.Add((currentCol, currentRow, pathIndex));
 
             int exitSide = tile.GetExitSide(entrySide);
-            if (exitSide == -1)
-            {
-                Grid.IsSolved = false;
-                return;
-            }
+            if (exitSide == -1) return false;
 
-            // Mark this tile and path as traversed
+            // Mark traversal with player color
             tile.IsTraversed = true;
-            tile.TraversedPathIndices.Add(pathIndex);
+            tile.TraversedPaths[pathIndex] = endpoint.Color;
 
-            // Check if we reached home
-            if (currentRow == Grid.Rows - 1 && currentCol == Grid.HomeColumn && exitSide == Grid.HomeExitSide)
-            {
-                Grid.IsSolved = true;
-                return;
-            }
+            // Check if reached home
+            if (currentRow == Grid.Rows - 1 && currentCol == endpoint.HomeColumn && exitSide == endpoint.HomeExitSide)
+                return true;
 
-            // Move to next
             var (nextCol, nextRow) = GetNeighbor(currentCol, currentRow, exitSide);
             entrySide = (exitSide + 3) % 6;
             currentCol = nextCol;
             currentRow = nextRow;
         }
 
-        Grid.IsSolved = false;
+        return false;
     }
 
     private static void Shuffle<T>(List<T> list)
@@ -426,6 +459,3 @@ public class HexMeHomeEngine
         }
     }
 }
-
-
-

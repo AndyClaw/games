@@ -34,20 +34,20 @@ public class HexTile
     public bool IsSolutionTile { get; set; }
 
     /// <summary>
-    /// Whether this tile is currently highlighted (part of active traversal from player).
+    /// Whether this tile is currently highlighted (part of active traversal from any player).
     /// </summary>
     public bool IsTraversed { get; set; }
 
     /// <summary>
-    /// Which path indices (0-2) are traversed. A tile can be traversed multiple times
-    /// using different paths (overpass/bridge crossings).
+    /// Maps path index to the player color that traverses it.
+    /// A tile can have multiple paths traversed by different players.
     /// </summary>
-    public HashSet<int> TraversedPathIndices { get; set; } = new();
+    public Dictionary<int, string> TraversedPaths { get; set; } = new();
 
     /// <summary>
-    /// Legacy single-path accessor for rendering compatibility.
+    /// Which path indices (0-2) are traversed (any player).
     /// </summary>
-    public int TraversedPathIndex => TraversedPathIndices.Count > 0 ? TraversedPathIndices.First() : -1;
+    public HashSet<int> TraversedPathIndices => TraversedPaths.Keys.ToHashSet();
 
     /// <summary>
     /// Get the effective side connections after rotation.

@@ -10,31 +10,18 @@ public class HexGrid
     public HexTile[,] Tiles { get; set; } = null!;
 
     /// <summary>
-    /// Column where the player enters from the top edge.
-    /// The player enters through the top side of tile [PlayerColumn, 0].
+    /// All player-home endpoint pairs. Each must be connected for a win.
     /// </summary>
-    public int PlayerColumn { get; set; }
+    public List<PlayerEndpoint> Endpoints { get; set; } = new();
+
+    // Legacy accessors for backward compatibility
+    public int PlayerColumn => Endpoints.Count > 0 ? Endpoints[0].PlayerColumn : 0;
+    public int PlayerEntrySide => Endpoints.Count > 0 ? Endpoints[0].PlayerEntrySide : 5;
+    public int HomeColumn => Endpoints.Count > 0 ? Endpoints[0].HomeColumn : 0;
+    public int HomeExitSide => Endpoints.Count > 0 ? Endpoints[0].HomeExitSide : 3;
 
     /// <summary>
-    /// The side of the top-row tile that the player enters through.
-    /// For flat-top hex with player on top: side 5 (top-left) or side 0 (top-right).
-    /// We'll use side 5 for even columns, side 0 for odd columns — or just pick a top-facing side.
-    /// Actually for simplicity: player always enters through side 5 (top-left) of the entry tile.
-    /// </summary>
-    public int PlayerEntrySide { get; set; }
-
-    /// <summary>
-    /// Column where the home is on the bottom edge.
-    /// </summary>
-    public int HomeColumn { get; set; }
-
-    /// <summary>
-    /// The side of the bottom-row tile that leads to home.
-    /// </summary>
-    public int HomeExitSide { get; set; }
-
-    /// <summary>
-    /// Whether the puzzle is solved.
+    /// Whether ALL players are connected to their homes.
     /// </summary>
     public bool IsSolved { get; set; }
 
@@ -43,4 +30,3 @@ public class HexGrid
     /// </summary>
     public bool ShowingSolution { get; set; }
 }
-

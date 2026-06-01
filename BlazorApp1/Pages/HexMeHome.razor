@@ -23,10 +23,13 @@
         </div>
 
         <div class="hex-grid" style="@GetGridStyle()">
-            @* Player marker with path connector showing exact entry edge *@
-            <div class="marker-connector" style="@GetPlayerConnectorStyle()">
-                @((MarkupString)RenderPlayerConnector())
-            </div>
+            @* Player and Home connectors for each endpoint *@
+            @foreach (var endpoint in Engine.Grid.Endpoints)
+            {
+                <div class="marker-connector" style="@GetPlayerConnectorStyle(endpoint)">
+                    @((MarkupString)RenderPlayerConnector(endpoint.Color))
+                </div>
+            }
 
             @for (int row = 0; row < Engine.Grid.Rows; row++)
             {
@@ -43,16 +46,26 @@
                 }
             }
 
-            @* Home marker with path connector showing exact exit edge *@
-            <div class="marker-connector" style="@GetHomeConnectorStyle()">
-                @((MarkupString)RenderHomeConnector())
-            </div>
+            @foreach (var endpoint in Engine.Grid.Endpoints)
+            {
+                <div class="marker-connector" style="@GetHomeConnectorStyle(endpoint)">
+                    @((MarkupString)RenderHomeConnector(endpoint.Color))
+                </div>
+            }
         </div>
 
         <div class="game-controls">
             <button class="hex-btn" @onclick="OnReset">Reset</button>
             <button class="hex-btn" @onclick="OnNewGame">New Game</button>
             <button class="hex-btn" @onclick="OnShowSolution">Show Solution</button>
+            @if (Engine.PlayerCount < 3)
+            {
+                <button class="hex-btn" @onclick="OnAddPlayer">+ Player</button>
+            }
+            @if (Engine.PlayerCount > 1)
+            {
+                <button class="hex-btn" @onclick="OnRemovePlayer">− Player</button>
+            }
         </div>
 
         <div class="size-controls">
@@ -116,6 +129,8 @@
     private void OnReset() => Engine.Reset();
     private void OnNewGame() => Engine.NewGame(currentSize, currentSize);
     private void OnShowSolution() => Engine.ShowSolution();
+    private void OnAddPlayer() => Engine.AddPlayer(currentSize);
+    private void OnRemovePlayer() => Engine.RemovePlayer(currentSize);
 
     private void ChangeSize(int size)
     {
@@ -138,64 +153,58 @@
         return $"position: absolute; left: {x:F1}px; top: {y:F1}px; width: {TileDisplayWidth:F1}px; height: {TileDisplayHeight:F1}px;";
     }
 
-    private string GetPlayerConnectorStyle()
+    private string GetPlayerConnectorStyle(PlayerEndpoint endpoint)
     {
-        // Position the connector SVG so it covers the area above the entry edge
-        double tileX = Engine.Grid.PlayerColumn * ColSpacing;
+        double tileX = endpoint.PlayerColumn * ColSpacing;
         double tileCenterX = tileX + TileDisplayWidth / 2;
         double tileCenterY = 35 + TileDisplayHeight / 2;
 
-        // Side 5 midpoint in display coords
         double sideRelX = -25.0 / 100.0 * TileDisplayWidth;
         double sideRelY = -43.3 / 115.47 * TileDisplayHeight;
         double edgeX = tileCenterX + sideRelX;
         double edgeY = tileCenterY + sideRelY;
 
-        // SVG box extends above the edge point
         double svgW = 60;
         double svgH = 70;
         return $"position: absolute; left: {edgeX - svgW / 2:F1}px; top: {edgeY - svgH + 5:F1}px; width: {svgW}px; height: {svgH}px; z-index: 20; pointer-events: none;";
     }
 
-    private string RenderPlayerConnector()
+    private string RenderPlayerConnector(string color)
     {
-        // SVG showing: person icon at top, thick red path curving down to bottom center (the edge point)
-        return @"<svg viewBox=""0 0 60 70"" width=""100%"" height=""100%"" xmlns=""http://www.w3.org/2000/svg"">
+        return $@"<svg viewBox=""0 0 60 70"" width=""100%"" height=""100%"" xmlns=""http://www.w3.org/2000/svg"">
             <path d=""M 30,10 C 30,40 30,50 30,65"" stroke=""#000"" stroke-width=""12"" stroke-linecap=""round"" fill=""none""/>
-            <path d=""M 30,10 C 30,40 30,50 30,65"" stroke=""#e63946"" stroke-width=""8"" stroke-linecap=""round"" fill=""none""/>
-            <circle cx=""30"" cy=""10"" r=""8"" fill=""#e63946"" stroke=""#222"" stroke-width=""1.5""/>
+            <path d=""M 30,10 C 30,40 30,50 30,65"" stroke=""{color}"" stroke-width=""8"" stroke-linecap=""round"" fill=""none""/>
+            <circle cx=""30"" cy=""10"" r=""8"" fill=""{color}"" stroke=""#222"" stroke-width=""1.5""/>
             <path d=""M22,8 L30,2 L38,8"" fill=""none"" stroke=""#222"" stroke-width=""1.5"" stroke-linecap=""round""/>
         </svg>";
     }
 
-    private string GetHomeConnectorStyle()
+    private string GetHomeConnectorStyle(PlayerEndpoint endpoint)
     {
         int lastRow = Engine.Grid.Rows - 1;
-        double tileX = Engine.Grid.HomeColumn * ColSpacing;
+        double tileX = endpoint.HomeColumn * ColSpacing;
         if (lastRow % 2 == 1) tileX += OddRowOffset;
         double tileCenterX = tileX + TileDisplayWidth / 2;
         double tileCenterY = lastRow * RowSpacing + 35 + TileDisplayHeight / 2;
 
-        // Side 3 midpoint in display coords
         double sideRelX = -25.0 / 100.0 * TileDisplayWidth;
         double sideRelY = 43.3 / 115.47 * TileDisplayHeight;
         double edgeX = tileCenterX + sideRelX;
         double edgeY = tileCenterY + sideRelY;
 
-        // SVG box extends below the edge point
         double svgW = 60;
         double svgH = 70;
         return $"position: absolute; left: {edgeX - svgW / 2:F1}px; top: {edgeY - 5:F1}px; width: {svgW}px; height: {svgH}px; z-index: 20; pointer-events: none;";
     }
 
-    private string RenderHomeConnector()
+    private string RenderHomeConnector(string color)
     {
-        // SVG showing: thick red path from top (edge point) curving down to house icon
-        return @"<svg viewBox=""0 0 60 70"" width=""100%"" height=""100%"" xmlns=""http://www.w3.org/2000/svg"">
+        string roofColor = color == "#e63946" ? "#c1121f" : color == "#2d6a4f" ? "#1b4332" : "#0d253f";
+        return $@"<svg viewBox=""0 0 60 70"" width=""100%"" height=""100%"" xmlns=""http://www.w3.org/2000/svg"">
             <path d=""M 30,5 C 30,20 30,35 30,45"" stroke=""#000"" stroke-width=""12"" stroke-linecap=""round"" fill=""none""/>
-            <path d=""M 30,5 C 30,20 30,35 30,45"" stroke=""#e63946"" stroke-width=""8"" stroke-linecap=""round"" fill=""none""/>
-            <path d=""M30,42 L44,54 L44,66 L16,66 L16,54 Z"" fill=""#e63946"" stroke=""#222"" stroke-width=""1.5""/>
-            <path d=""M30,42 L44,54 L16,54 Z"" fill=""#c1121f"" stroke=""#222"" stroke-width=""1.5""/>
+            <path d=""M 30,5 C 30,20 30,35 30,45"" stroke=""{color}"" stroke-width=""8"" stroke-linecap=""round"" fill=""none""/>
+            <path d=""M30,42 L44,54 L44,66 L16,66 L16,54 Z"" fill=""{color}"" stroke=""#222"" stroke-width=""1.5""/>
+            <path d=""M30,42 L44,54 L16,54 Z"" fill=""{roofColor}"" stroke=""#222"" stroke-width=""1.5""/>
             <rect x=""25"" y=""56"" width=""10"" height=""10"" fill=""#fff"" stroke=""#222"" stroke-width=""1""/>
         </svg>";
     }
@@ -232,8 +241,8 @@
         {
             var (sideA, sideB) = tile.Paths[i];
             string pathD = GetArcPath(sideA, sideB);
-            bool isTraversed = tile.IsTraversed && tile.TraversedPathIndices.Contains(i);
-            string pathColor = isTraversed ? "#e63946" : "#ffffff";
+            bool isTraversed = tile.IsTraversed && tile.TraversedPaths.ContainsKey(i);
+            string pathColor = isTraversed ? tile.TraversedPaths[i] : "#ffffff";
 
             svg.Append($"<path d=\"{pathD}\" fill=\"none\" stroke=\"#000000\" stroke-width=\"20\" stroke-linecap=\"butt\"/>");
             svg.Append($"<path d=\"{pathD}\" fill=\"none\" stroke=\"{pathColor}\" stroke-width=\"14\" stroke-linecap=\"butt\"/>");
@@ -241,18 +250,21 @@
 
         svg.Append("</g>");
 
-        // Draw entry/exit markers on the hex edge (NOT rotated, in absolute position)
-        // Player entry: red circle on side 5 of the player column, row 0
-        if (tile.Row == 0 && tile.Col == Engine.Grid.PlayerColumn)
+        // Draw entry/exit markers on the hex edge for each endpoint
+        foreach (var endpoint in Engine.Grid.Endpoints)
         {
-            var mid = GetSideMidpoint(Engine.Grid.PlayerEntrySide);
-            svg.Append($"<circle cx=\"{mid.x:F1}\" cy=\"{mid.y:F1}\" r=\"8\" fill=\"#e63946\" stroke=\"#000\" stroke-width=\"2\"/>");
-        }
-        // Home exit: red circle on side 3 of the home column, last row
-        if (tile.Row == Engine.Grid.Rows - 1 && tile.Col == Engine.Grid.HomeColumn)
-        {
-            var mid = GetSideMidpoint(Engine.Grid.HomeExitSide);
-            svg.Append($"<circle cx=\"{mid.x:F1}\" cy=\"{mid.y:F1}\" r=\"8\" fill=\"#e63946\" stroke=\"#000\" stroke-width=\"2\"/>");
+            // Player entry dot on row 0 tile
+            if (tile.Row == 0 && tile.Col == endpoint.PlayerColumn)
+            {
+                var mid = GetSideMidpoint(endpoint.PlayerEntrySide);
+                svg.Append($"<circle cx=\"{mid.x:F1}\" cy=\"{mid.y:F1}\" r=\"7\" fill=\"{endpoint.Color}\" stroke=\"#000\" stroke-width=\"2\"/>");
+            }
+            // Home exit dot on last-row tile
+            if (tile.Row == Engine.Grid.Rows - 1 && tile.Col == endpoint.HomeColumn)
+            {
+                var mid = GetSideMidpoint(endpoint.HomeExitSide);
+                svg.Append($"<circle cx=\"{mid.x:F1}\" cy=\"{mid.y:F1}\" r=\"7\" fill=\"{endpoint.Color}\" stroke=\"#000\" stroke-width=\"2\"/>");
+            }
         }
 
         svg.Append("</svg>");
