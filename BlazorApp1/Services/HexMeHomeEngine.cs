@@ -68,7 +68,7 @@ public class HexMeHomeEngine
 
     private void GenerateLevel()
     {
-        int maxAttempts = 200;
+        int maxAttempts = 500; // more attempts needed for multi-player on larger grids
         for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
             if (TryGenerateLevel())
@@ -322,12 +322,27 @@ public class HexMeHomeEngine
     private void GenerateRandomTilesOnly()
     {
         Grid.Endpoints.Clear();
-        Grid.Endpoints.Add(new PlayerEndpoint
+        var usedTopCols = new HashSet<int>();
+        var usedBottomCols = new HashSet<int>();
+
+        for (int p = 0; p < PlayerCount; p++)
         {
-            PlayerColumn = _rng.Next(Grid.Columns),
-            HomeColumn = _rng.Next(Grid.Columns),
-            Color = PlayerColors[0]
-        });
+            int playerCol, homeCol;
+            do { playerCol = _rng.Next(Grid.Columns); } while (usedTopCols.Contains(playerCol));
+            do { homeCol = _rng.Next(Grid.Columns); } while (usedBottomCols.Contains(homeCol));
+            usedTopCols.Add(playerCol);
+            usedBottomCols.Add(homeCol);
+
+            Grid.Endpoints.Add(new PlayerEndpoint
+            {
+                PlayerColumn = playerCol,
+                PlayerEntrySide = 5,
+                HomeColumn = homeCol,
+                HomeExitSide = 3,
+                Color = PlayerColors[p]
+            });
+        }
+
         for (int c = 0; c < Grid.Columns; c++)
         for (int r = 0; r < Grid.Rows; r++)
         {
